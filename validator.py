@@ -111,8 +111,12 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                     match_type = "Direct Scheme"
                 else:
                     status.append("❌ *Scheme number assigned to different member")
+                    # ⚠️ Allow fallback if name mismatch
+                    print(f"[i={i}] Scheme mismatch, attempting fallback for: {name}")
+                    scheme = ""  # Invalidate scheme number to trigger fallback logic below
             else:
                 status.append("❌ *Scheme number not found in system")
+                scheme = ""  # Invalidate to trigger fallback
 
         else:
             # --- ID/Contact Fallback Matching ---
