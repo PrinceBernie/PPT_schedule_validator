@@ -1,3 +1,33 @@
+import pandas as pd
+from fuzzywuzzy import fuzz, process
+
+# --- Utility Functions ---
+
+def clean_name(series):
+    return (series.astype(str).str.strip().str.lower()
+            .str.replace(".", " ", regex=False)
+            .str.replace(",", " ", regex=False)
+            .str.replace(r"\s+", " ", regex=True))
+
+def build_full_name(df):
+    return (df[['FirstName', 'MiddleName', 'LastName']].fillna('')
+            .agg(' '.join, axis=1)
+            .str.strip()
+            .str.replace(r"\s+", " ", regex=True))
+
+def find_and_validate_match(df, key_col, key_val, input_name, threshold):
+    if pd.isna(key_val):
+        return None, None
+    match = df[df[key_col] == key_val]
+    if not match.empty:
+        db_row = match.iloc[0]
+        score = fuzz.token_sort_ratio(input_name, db_row['clean_name'])
+        if score >= threshold:
+            return db_row, score
+    return None, None
+
+# --- Main Validation Function ---
+
 def validate_schedule(schedule_df, filtered_df, scheme_df):
     strict_threshold, loose_threshold = 50, 50
 
