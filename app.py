@@ -88,7 +88,7 @@ if st.button("✅ Run Validation"):
 
                 # Write DataFrame to Excel in-memory
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    validated_df.to_excel(writer, index=False, sheet_name='Validated')
+                    validated_df.to_excel(writer, index=True, sheet_name='Validated')
 
                 # Get Excel binary data
                 excel_data = output.getvalue()
