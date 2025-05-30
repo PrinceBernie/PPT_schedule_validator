@@ -31,8 +31,8 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
 def validate_schedule(schedule_df, filtered_df, scheme_df):
     strict_threshold, loose_threshold = 50, 50
 
-    # --- Rename and Clean Columns ---
-    dump_df = dump_df.rename(columns={
+    # --- Rename & Clean Dump Columns for both filtered_df and scheme_df ---
+    rename_map  = {
         'Creation time': 'Creation Time', 'Start date': 'Start Date', 'Region': 'Region',
         'Gender': 'Gender', 'First name': 'FirstName', '[Middle name]': 'MiddleName',
         '[Last name]': 'LastName', 'Member number': 'Member Number', '[Scheme number]': 'Scheme Number',
@@ -43,18 +43,20 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
         'Postal address': 'Postal Address', 'Landmark': 'Landmark', 'Email': 'Email',
         'Home town': 'HomeTown', 'Marital status': 'Marital Status', 'Country': 'Country',
         'Occupation': 'Occupation', 'Status': 'Status'
-    })
+    }
+
+    for df in [filtered_df, scheme_df]:
+        df.rename(columns=rename_map, inplace=True)
+        df['clean_name'] = clean_name(build_full_name(df))
+        df['NIA Number'] = df['NIA Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
+        df['SSNIT Number'] = df['SSNIT Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
+        df['Contact'] = pd.to_numeric(df['Contact'], errors='coerce')
 
     schedule_df = schedule_df.rename(columns={
         'SSNIT NUMBER': 'SSNIT Number', 'GH. CARD NUMBER': 'NIA Number', 'CONTACT': 'Contact',
         'PPT SCHEME NUMBER': 'Scheme Number', 'MEMBER NAME': 'Member Name',
         'BASIC SALARY': 'Salary', '5% CONTRIBUTION': 'Tier2 Contribution'
     })
-
-    dump_df['clean_name'] = clean_name(build_full_name(dump_df))
-    dump_df['NIA Number'] = dump_df['NIA Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
-    dump_df['SSNIT Number'] = dump_df['SSNIT Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
-    dump_df['Contact'] = pd.to_numeric(dump_df['Contact'], errors='coerce')
 
     schedule_df['clean_name'] = clean_name(schedule_df['Member Name'])
     schedule_df['NIA Number'] = schedule_df['NIA Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
