@@ -111,7 +111,7 @@ def validate_schedule(schedule_df, dump_df):
                 if db_row is not None:
                     fallback_match = db_row
                     schedule_df.at[i, 'Scheme Number'] = db_row['Scheme Number']
-                    status.append(f"✅ Scheme auto-filled ({id_type} match)")
+                    status.append(f"✅ *Scheme auto-filled ({id_type} match)")
                     break  # Stop at first valid fallback
 
             # Fuzzy Name Match
@@ -122,7 +122,7 @@ def validate_schedule(schedule_df, dump_df):
                     if score >= strict_threshold:
                         matched_row = dump_df[dump_df['clean_name'] == matched_name].iloc[0]
                         schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                        status.append("🚫 Scheme number populated via fuzzy name search")
+                        status.append("🚫 *Scheme number populated via fuzzy name search")
                     else:
                         status.append("🟡 *Unregistered member")
                 else:
@@ -131,4 +131,4 @@ def validate_schedule(schedule_df, dump_df):
         # Save Status
         schedule_df.at[i, 'Status'] = "; ".join(status)
 
-    return schedule_df.sort_values(by=["Status", "Member Name"], ascending=[False, True]).reset_index(drop=True)
+    return schedule_df.sort_values(by=["Status", "Member Name"], ascending=[False, True])
