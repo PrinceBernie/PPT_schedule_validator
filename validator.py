@@ -28,7 +28,7 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
 
 # --- Main Validation Function ---
 
-def validate_schedule(schedule_df, dump_df):
+def validate_schedule(schedule_df, filtered_df, scheme_df):
     strict_threshold, loose_threshold = 50, 50
 
     # --- Rename and Clean Columns ---
@@ -94,7 +94,7 @@ def validate_schedule(schedule_df, dump_df):
 
         # Direct Scheme Match
         if scheme and len(scheme) == 13 and scheme.startswith("1010"):
-            match_row = dump_df[dump_df['Scheme Number'] == scheme]
+            match_row = scheme_df[scheme_df['Scheme Number'] == scheme]
             if not match_row.empty:
                 db_name = match_row.iloc[0]['clean_name']
                 similarity = fuzz.token_sort_ratio(name, db_name)
@@ -105,9 +105,9 @@ def validate_schedule(schedule_df, dump_df):
             else:
                 status.append("❌ *Scheme number Not Found in System")
         else:
-            # --- Fallbacks ---
+            # --- Fallbacks: Search in scheme-level dump ---
             for id_type, col in [('Ghana Card', 'NIA Number'), ('SSNIT', 'SSNIT Number'), ('Contact', 'Contact')]:
-                db_row, score = find_and_validate_match(dump_df, col, row[col], name, strict_threshold)
+                db_row, score = find_and_validate_match(scheme_df, col, row[col], name, strict_threshold)
                 if db_row is not None:
                     fallback_match = db_row
                     schedule_df.at[i, 'Scheme Number'] = db_row['Scheme Number']
@@ -116,11 +116,11 @@ def validate_schedule(schedule_df, dump_df):
 
             # Fuzzy Name Match
             if fallback_match is None:
-                match = process.extractOne(name, dump_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
+                match = process.extractOne(name, filtered_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
                 if match:
                     matched_name, score = match
                     if score >= strict_threshold:
-                        matched_row = dump_df[dump_df['clean_name'] == matched_name].iloc[0]
+                        matched_row = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
                         schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
                         status.append("🚫 *Scheme number populated via fuzzy name search")
                     else:

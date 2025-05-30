@@ -69,7 +69,14 @@ if st.button("✅ Run Validation"):
             if filtered_dump.empty:
                 st.warning("⚠️ No matching records found in system data for selected Employer and Scheme.")
             else:
-                validated_df = validate_schedule(schedule_df, filtered_dump)
+                # Full dump filtered only by scheme type (for ID fallbacks)
+                scheme_only_dump = dump_df[dump_df['[Scheme name]'] == scheme_type].copy()
+
+                # Dump filtered by both employer and scheme (for fuzzy match)
+                filtered_dump = scheme_only_dump[scheme_only_dump['Group name'] == employer_name].copy()
+
+                validated_df = validate_schedule(schedule_df, filtered_dump, scheme_only_dump)
+
 
                 st.success("🎉 Validation Complete!")
                 st.dataframe(validated_df[['SSNIT Number',
