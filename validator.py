@@ -156,4 +156,4 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
         schedule_df.at[i, 'Status'] = "; ".join(status)
         schedule_df.at[i, 'Match Type'] = match_type
 
-    return schedule_df.sort_values(by=["Status", "Member Name"], ascending=[False, True])
+    return schedule_df.fillna("").sort_values(by=["Status", "Member Name"], ascending=[True, True])
