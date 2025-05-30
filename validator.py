@@ -1,37 +1,7 @@
-import pandas as pd
-from fuzzywuzzy import fuzz, process
-
-# --- Utility Functions ---
-
-def clean_name(series):
-    return (series.astype(str).str.strip().str.lower()
-            .str.replace(".", " ", regex=False)
-            .str.replace(",", " ", regex=False)
-            .str.replace(r"\s+", " ", regex=True))
-
-def build_full_name(df):
-    return (df[['FirstName', 'MiddleName', 'LastName']].fillna('')
-            .agg(' '.join, axis=1)
-            .str.strip()
-            .str.replace(r"\s+", " ", regex=True))
-
-def find_and_validate_match(df, key_col, key_val, input_name, threshold):
-    if pd.isna(key_val):
-        return None, None
-    match = df[df[key_col] == key_val]
-    if not match.empty:
-        db_row = match.iloc[0]
-        score = fuzz.token_sort_ratio(input_name, db_row['clean_name'])
-        if score >= threshold:
-            return db_row, score
-    return None, None
-
-# --- Main Validation Function ---
-
 def validate_schedule(schedule_df, filtered_df, scheme_df):
     strict_threshold, loose_threshold = 50, 50
 
-    rename_map  = {
+    rename_map = {
         'Creation time': 'Creation Time', 'Start date': 'Start Date', 'Region': 'Region',
         'Gender': 'Gender', 'First name': 'FirstName', '[Middle name]': 'MiddleName',
         '[Last name]': 'LastName', 'Member number': 'Member Number', '[Scheme number]': 'Scheme Number',
@@ -99,6 +69,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
 
         # Step 2: Scheme ID or Fallback Matching
         matched_row = None
+        scheme_mismatch = False
 
         # --- Direct Scheme Match ---
         if scheme and len(scheme) == 13 and scheme.startswith("1010"):
@@ -109,16 +80,19 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                 if similarity >= loose_threshold:
                     status.append("✅ Valid Scheme ID & Name Match")
                     match_type = "Direct Scheme"
+                    matched_row = match_row.iloc[0]
                 else:
                     status.append("❌ *Scheme number assigned to different member")
-                    # ⚠️ Allow fallback if name mismatch
                     print(f"[i={i}] Scheme mismatch, attempting fallback for: {name}")
-                    scheme = ""  # Invalidate scheme number to trigger fallback logic below
+                    scheme_mismatch = True
             else:
                 status.append("❌ *Scheme number not found in system")
-                scheme = ""  # Invalidate to trigger fallback
-
+                scheme_mismatch = True
         else:
+            scheme_mismatch = True
+
+        # --- Allow fallback if scheme is missing or mismatch occurred ---
+        if scheme_mismatch and matched_row is None:
             # --- ID/Contact Fallback Matching ---
             for id_type, col in [('Ghana Card', 'NIA Number'), ('SSNIT', 'SSNIT Number'), ('Contact', 'Contact')]:
                 match, score = find_and_validate_match(scheme_df, col, row[col], name, strict_threshold)
