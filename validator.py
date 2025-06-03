@@ -29,7 +29,7 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
 # --- Main Validation Function ---
 
 def validate_schedule(schedule_df, filtered_df, scheme_df):
-    strict_threshold, loose_threshold = 50, 50
+    strict_threshold, loose_threshold = 80, 50
 
     rename_map = {
         'Creation time': 'Creation Time', 'Start date': 'Start Date', 'Region': 'Region',

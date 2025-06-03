@@ -88,7 +88,7 @@ if st.button("✅ Run Validation"):
 
                 # --- Highlight Invalid Rows ---
                 def highlight_invalid(row):
-                    return ['background-color: #fdd' if 'Invalid' in str(row['Status']) else '' for _ in row]
+                    return ['background-color: #e20016' if 'Invalid' in str(row['Status']) else '' for _ in row]
 
                 st.success("🎉 Validation Complete!")
                 st.dataframe(
