@@ -1,10 +1,10 @@
 import pandas as pd
-from fuzzywuzzy import fuzz, process
+from rapidfuzz import fuzz, process
 
 # --- Utility Functions ---
 
-def clean_name(series):
-    return (series.astype(str).str.strip().str.lower()
+def clean_name(column):
+    return (column.astype(str).str.strip().str.lower()
             .str.replace(".", " ", regex=False)
             .str.replace(",", " ", regex=False)
             .str.replace(r"\s+", " ", regex=True))
@@ -16,6 +16,51 @@ def build_full_name(df):
             .str.replace(r"\s+", " ", regex=True))
 
 def find_and_validate_match(df, key_col, key_val, input_name, threshold):
+    """
+    Attempts to find a matching row in the provided DataFrame using a specific ID or contact field,
+    and validates the match by checking the similarity of names using fuzzy string matching.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        The dataset (usually the system dump) to search for a potential match.
+    
+    key_col : str
+        The name of the (system) column to match against (e.g., 'NIA Number', 'SSNIT Number', or 'Contact').
+    
+    key_val : str or float
+        The value from the uploaded schedule that we want to use for matching (e.g., a specific Ghana Card number).
+    
+    input_name : str
+        The cleaned name of the member from the uploaded schedule (used for verifying that the ID/contact belongs to the right person).
+    
+    threshold : int
+        The minimum acceptable fuzzy match score (0–100) required to consider the name validation successful.
+
+    Returns:
+    --------
+    db_row : pandas.Series or None
+        The first row from the dataset that matches the key value and passes the fuzzy name similarity check.
+        Returns None if no match is found or if the name does not meet the similarity threshold.
+
+    score : float or None
+        The fuzzy match score between the input name and the matched system record's name. 
+        This score helps determine how similar the names are (used as a secondary validation step).
+        Returns None if no valid match is found.
+
+    Function Logic:
+    ---------------
+    1. If the provided value (`key_val`) is missing or NaN, the function skips and returns no match.
+    2. Otherwise, it searches the DataFrame for rows where the `key_col` exactly matches the given `key_val`.
+    3. If one or more matches are found:
+        a. It selects the first match (assumes uniqueness).
+        b. It compares the cleaned name from the schedule to the cleaned name in the system using fuzzy token sorting.
+        c. If the similarity score is greater than or equal to the threshold, it returns the matched row and score.
+    4. If there's no match or the name similarity is too low, it returns None, None.
+
+    This function is typically used for fallback validation when a scheme number is missing or unreliable,
+    relying on alternate identifiers like Ghana Card, SSNIT Number, or Contact to find the member.
+    """
     if pd.isna(key_val):
         return None, None
     match = df[df[key_col] == key_val]
@@ -71,7 +116,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
     schedule_df['Contact'] = pd.to_numeric(schedule_df['Contact'], errors='coerce')
     schedule_df['Salary'] = pd.to_numeric(schedule_df['Salary'], errors='coerce')
     schedule_df['Tier2 Contribution'] = pd.to_numeric(schedule_df['Tier2 Contribution'], errors='coerce')
-    schedule_df['Status'] = ""
+    schedule_df['Validation Status'] = ""
     schedule_df['Match Type'] = ""
 
     for i, row in schedule_df.iterrows():
@@ -87,16 +132,16 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
 
         # Step 1: Salary & Contribution Check
         if pd.isna(salary) or pd.isna(tier2):
-            schedule_df.at[i, 'Status'] = "❌ FLAG: Missing basic salary or 5% contribution"
+            schedule_df.at[i, 'Validation Status'] = "❌ FLAG: Missing basic salary or 5% contribution"
             continue
 
         if not (539.8 <= salary <= 61000):
-            schedule_df.at[i, 'Status'] = "❌ FLAG: Basic salary not within statutory range (GHS 539.80 - 61,000)"
+            schedule_df.at[i, 'Validation Status'] = "❌ FLAG: Basic salary not within statutory range (GHS 539.80 - 61,000)"
             continue
 
         expected = round(salary * 0.05, 2)
         if (abs(round(tier2, 2) - expected) > 0.5) and ("ops" in str(scheme).lower()):
-            schedule_df.at[i, 'Status'] = f"❌ FLAG: Incorrect 5% contribution (expected GHS {expected:.2f})"
+            schedule_df.at[i, 'Validation Status'] = f"❌ FLAG: Incorrect 5% contribution (expected GHS {expected:.2f})"
             continue
 
         # Step 2: Scheme ID or Fallback Matching
@@ -114,49 +159,47 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                     match_type = "Direct Scheme"
                     matched_row = match_row.iloc[0]
                 else:
-                    status.append(f"⚠️ WARNING: Incorrect scheme number assignment. Assigned scheme number belongs to {db_name}")
-                    print(f"[i={i}] Scheme mismatch, attempting fallback for: {name}")
-                    scheme_mismatch = True
+                    status.append(f"⚠️ WARNING: Incorrect scheme number assignment. Assigned scheme number, {scheme}, belongs to {str(db_name).title()}")
+                    scheme_mismatch = True 
             else:
-                status.append("⚠️ WARNING: No match for Scheme ID in system database")
+                status.append(f"⚠️ WARNING: No match for Scheme No., {scheme}, in the selected scheme's database")
                 scheme_mismatch = True
         else:
             scheme_mismatch = True
 
         # --- Allow fallback if scheme is missing or mismatch occurred ---
         if scheme_mismatch and matched_row is None:
-            # --- ID/Contact Fallback Matching ---
             for id_type, col in [('Ghana Card', 'NIA Number'), ('SSNIT', 'SSNIT Number'), ('Contact', 'Contact')]:
                 match, score = find_and_validate_match(scheme_df, col, row[col], name, strict_threshold)
                 if match is not None:
                     schedule_df.at[i, 'Scheme Number'] = match['Scheme Number']
-                    status.append(f"✅ VALID: Scheme ID auto-matched and populated using ({id_type} match)")
+                    status.append(f"✅ VALID: Scheme ID auto-matched and populated using ({id_type} match). Matched name: {match['clean_name'].title()}")
                     match_type = id_type
                     matched_row = match
                     break
 
-            # ----Fuzzy Name Match----
+            # ---- Fuzzy Name Match ----
             if matched_row is None:
                 match = process.extractOne(name, filtered_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
                 if match:
-                    matched_name, score = match
+                    matched_name, score, _ = match  # updated for rapidfuzz (score is float, match includes index)
                     if score >= strict_threshold:
                         matched_row = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
                         schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                        status.append(f"🚫 INFO: Scheme filled via fuzzy name. Matched: {matched_name} Fuzzy score = {round(float(score),2)}%")
+                        status.append(f"🚫 INFO: Scheme ID filled via fuzzy name. Matched: {matched_name} Fuzzy score = {round(float(score), 2)}%")
                         match_type = "Fuzzy Name"
                     else:
-                        status.append("🟡 NOTICE: No match found in system (likely unregistered)")
+                        status.append("🟡 NOTICE: No match found in system (likely unregistered member)")
                 else:
-                    status.append("🟡 NOTICE: No match found in system (likely unregistered)")
+                    status.append("🟡 NOTICE: No match found in system (likely unregistered member)")
 
-        # --- Optional: Detect mismatched name if ID matched but name differs ---
-        if matched_row is not None and fuzz.token_sort_ratio(name, matched_row['clean_name']) < strict_threshold:
-            status.append("⚠️ *Name mismatch with matched record")
+        # Optional: flag if name doesn't match well
+        if matched_row is not None and fuzz.token_sort_ratio(name, matched_row['clean_name']) < loose_threshold:
+            status.append(f"⚠️ *Name mismatch with matched record {round(fuzz.token_sort_ratio(name, matched_row['clean_name']),2)}%")
 
-        # --- Final Status ---
-        schedule_df.at[i, 'Status'] = "; ".join(status)
+        schedule_df.at[i, 'Validation Status'] = "; ".join(status)
         schedule_df.at[i, 'Match Type'] = match_type
-        schedule_df[["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]] = schedule_df[["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]].astype(str).replace("nan", "")
+        schedule_df[["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]] = schedule_df[
+            ["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]].astype(str).replace("nan", "")
 
-    return schedule_df.fillna("").sort_values(by=["Member Name", "Status"], ascending=[True, True])
+    return schedule_df.fillna("").sort_values(by=["Member Name", "Validation Status"], ascending=[True, True])

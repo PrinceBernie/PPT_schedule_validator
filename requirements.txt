@@ -1,6 +1,6 @@
 streamlit
 pandas
 openpyxl
-fuzzywuzzy
+rapidfuzz
 python-levenshtein
 xlsxwriter

@@ -84,17 +84,17 @@ if st.button("✅ Run Validation"):
                 validated_df = validate_schedule(schedule_df, filtered_dump, scheme_only_dump)
 
                 # --- Sort by Status for better visibility ---
-                validated_df = validated_df.sort_values(by=["Status", "Member Name"], ascending=[False, True])
+                validated_df = validated_df.sort_values(by=["Validation Status", "Member Name"], ascending=[False, True])
 
                 # --- Highlight Invalid Rows ---
                 def highlight_invalid(row):
-                    return ['background-color: #e20016' if 'Invalid' in str(row['Status']) else '' for _ in row]
+                    return ['background-color: #e20016' if 'Invalid' in str(row['Validation Status']) else '' for _ in row]
 
-                st.success("🎉 Validation Complete!")
+                st.success("✔ VALIDATION COMPLETE!")
                 st.dataframe(
                     validated_df[[
                         'SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
-                        'Member Name', 'Salary', 'Tier2 Contribution', 'Status'
+                        'Member Name', 'Salary', 'Tier2 Contribution', 'Validation Status'
                     ]]#.style.apply(highlight_invalid, axis=1),
                     #use_container_width=True
                 )
