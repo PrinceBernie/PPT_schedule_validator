@@ -141,7 +141,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                     if score >= strict_threshold:
                         matched_row = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
                         schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                        status.append("🚫 *Scheme number populated via fuzzy name")
+                        status.append(f"🚫 *Scheme number populated via fuzzy name. Fuzzy score = {round(float(score),2)}%")
                         match_type = "Fuzzy Name"
                     else:
                         status.append("🟡 *Unregistered member")
@@ -155,5 +155,6 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
         # --- Final Status ---
         schedule_df.at[i, 'Status'] = "; ".join(status)
         schedule_df.at[i, 'Match Type'] = match_type
+        schedule_df[["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]] = schedule_df[["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]].astype(str).replace("nan", "")
 
     return schedule_df.fillna("").sort_values(by=["Status", "Member Name"], ascending=[True, True])
