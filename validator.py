@@ -29,7 +29,7 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
 # --- Main Validation Function ---
 
 def validate_schedule(schedule_df, filtered_df, scheme_df):
-    strict_threshold, loose_threshold = 80, 50
+    strict_threshold, loose_threshold = 86, 50
 
     rename_map = {
         'Creation time': 'Creation Time', 'Start date': 'Start Date', 'Region': 'Region',
@@ -49,6 +49,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
     for df in [filtered_df.copy(), scheme_df.copy()]:
         df.rename(columns=rename_map, inplace=True)
         df['clean_name'] = clean_name(build_full_name(df))
+        df['clean_name'] = df['clean_name'].apply(lambda name: " ".join(sorted(list(str(name).split))))
         df['NIA Number'] = df['NIA Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
         df['SSNIT Number'] = df['SSNIT Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
         df['Contact'] = pd.to_numeric(df['Contact'], errors='coerce')
@@ -63,6 +64,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
     })
 
     schedule_df['clean_name'] = clean_name(schedule_df['Member Name'])
+    schedule_df['clean_name'] = schedule_df['clean_name'].apply(lambda name: " ".join(sorted(list(str(name).split))))
     schedule_df['NIA Number'] = schedule_df['NIA Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
     schedule_df['SSNIT Number'] = schedule_df['SSNIT Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
     schedule_df['Scheme Number'] = schedule_df['Scheme Number'].astype(str).str.strip().str.replace(r"[^\w]", "", regex=True)
