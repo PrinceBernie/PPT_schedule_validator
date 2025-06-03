@@ -87,16 +87,16 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
 
         # Step 1: Salary & Contribution Check
         if pd.isna(salary) or pd.isna(tier2):
-            schedule_df.at[i, 'Status'] = "❌ *Missing salary or contribution"
+            schedule_df.at[i, 'Status'] = "❌ FLAG: Missing basic salary or 5% contribution"
             continue
 
         if not (539.8 <= salary <= 61000):
-            schedule_df.at[i, 'Status'] = "❌ *Invalid salary range. (min: GHS 539.80, max: GHS 61,000)"
+            schedule_df.at[i, 'Status'] = "❌ FLAG: Basic salary not within statutory range (GHS 539.80 - 61,000)"
             continue
 
         expected = round(salary * 0.05, 2)
         if (abs(round(tier2, 2) - expected) > 0.5) and ("ops" in str(scheme).lower()):
-            schedule_df.at[i, 'Status'] = f"❌ *Incorrect 5% (expected GHS {expected:.2f})"
+            schedule_df.at[i, 'Status'] = f"❌ FLAG: Incorrect 5% contribution (expected GHS {expected:.2f})"
             continue
 
         # Step 2: Scheme ID or Fallback Matching
@@ -110,15 +110,15 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                 db_name = match_row.iloc[0]['clean_name']
                 similarity = fuzz.token_sort_ratio(name, db_name)
                 if similarity >= loose_threshold:
-                    status.append("✅ Valid Scheme ID & Name Match")
+                    status.append("✅ VALID: Member matched with scheme ID and name")
                     match_type = "Direct Scheme"
                     matched_row = match_row.iloc[0]
                 else:
-                    status.append("❌ *Scheme number assigned to different member")
+                    status.append(f"⚠️ WARNING: Incorrect scheme number assignment. Assigned scheme number belongs to {db_name}")
                     print(f"[i={i}] Scheme mismatch, attempting fallback for: {name}")
                     scheme_mismatch = True
             else:
-                status.append("❌ *Scheme number not found in system")
+                status.append("⚠️ WARNING: No match for Scheme ID in system database")
                 scheme_mismatch = True
         else:
             scheme_mismatch = True
@@ -130,7 +130,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                 match, score = find_and_validate_match(scheme_df, col, row[col], name, strict_threshold)
                 if match is not None:
                     schedule_df.at[i, 'Scheme Number'] = match['Scheme Number']
-                    status.append(f"✅ *Scheme auto-filled ({id_type} match)")
+                    status.append(f"✅ VALID: Scheme ID auto-matched and populated using ({id_type} match)")
                     match_type = id_type
                     matched_row = match
                     break
@@ -143,12 +143,12 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                     if score >= strict_threshold:
                         matched_row = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
                         schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                        status.append(f"🚫 *Scheme number populated via fuzzy name. Matched name: {matched_name} Fuzzy score = {round(float(score),2)}%")
+                        status.append(f"🚫 INFO: Scheme filled via fuzzy name. Matched: {matched_name} Fuzzy score = {round(float(score),2)}%")
                         match_type = "Fuzzy Name"
                     else:
-                        status.append("🟡 *Unregistered member")
+                        status.append("🟡 NOTICE: No match found in system (likely unregistered)")
                 else:
-                    status.append("🟡 *Unregistered member")
+                    status.append("🟡 NOTICE: No match found in system (likely unregistered)")
 
         # --- Optional: Detect mismatched name if ID matched but name differs ---
         if matched_row is not None and fuzz.token_sort_ratio(name, matched_row['clean_name']) < strict_threshold:
@@ -159,4 +159,4 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
         schedule_df.at[i, 'Match Type'] = match_type
         schedule_df[["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]] = schedule_df[["SSNIT Number", "NIA Number", "Contact", "Scheme Number"]].astype(str).replace("nan", "")
 
-    return schedule_df.fillna("").sort_values(by=["Status", "Member Name"], ascending=[True, True])
+    return schedule_df.fillna("").sort_values(by=["Member Name", "Status"], ascending=[True, True])

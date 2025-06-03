@@ -55,8 +55,8 @@ schedule_file = st.file_uploader("📤 Upload Contribution Schedule (.xlsx)", ty
 if schedule_file:
     try:
         schedule_df = pd.read_excel(schedule_file)
-        st.markdown("### 📄 Preview Uploaded Schedule")
-        st.dataframe(schedule_df.head(), use_container_width=True)
+        st.markdown("### 📄 Preview Uploaded Schedule (Top 10 records)")
+        st.dataframe(schedule_df.head(10), use_container_width=True)
     except Exception as e:
         st.error(f"❌ Error reading uploaded file: {e}")
         schedule_df = pd.DataFrame()
@@ -84,7 +84,7 @@ if st.button("✅ Run Validation"):
                 validated_df = validate_schedule(schedule_df, filtered_dump, scheme_only_dump)
 
                 # --- Sort by Status for better visibility ---
-                validated_df = validated_df.sort_values(by="Status")
+                validated_df = validated_df.sort_values(by=["Status", "Member Name"], ascending=[False, True])
 
                 # --- Highlight Invalid Rows ---
                 def highlight_invalid(row):
@@ -95,8 +95,8 @@ if st.button("✅ Run Validation"):
                     validated_df[[
                         'SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
                         'Member Name', 'Salary', 'Tier2 Contribution', 'Status'
-                    ]].style.apply(highlight_invalid, axis=1),
-                    use_container_width=True
+                    ]]#.style.apply(highlight_invalid, axis=1),
+                    #use_container_width=True
                 )
 
                 # --- Excel Download ---
