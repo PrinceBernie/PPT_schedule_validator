@@ -29,7 +29,7 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
 # --- Main Validation Function ---
 
 def validate_schedule(schedule_df, filtered_df, scheme_df):
-    strict_threshold, loose_threshold = 86, 50
+    strict_threshold, loose_threshold = 87, 50
 
     rename_map = {
         'Creation time': 'Creation Time', 'Start date': 'Start Date', 'Region': 'Region',
@@ -143,7 +143,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df):
                     if score >= strict_threshold:
                         matched_row = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
                         schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                        status.append(f"🚫 *Scheme number populated via fuzzy name. Fuzzy score = {round(float(score),2)}%")
+                        status.append(f"🚫 *Scheme number populated via fuzzy name. Matched name: {matched_name} Fuzzy score = {round(float(score),2)}%")
                         match_type = "Fuzzy Name"
                     else:
                         status.append("🟡 *Unregistered member")
