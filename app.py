@@ -55,8 +55,8 @@ schedule_file = st.file_uploader("📤 Upload Contribution Schedule (.xlsx)", ty
 if schedule_file:
     try:
         schedule_df = pd.read_excel(schedule_file)
-        st.markdown("### 📄 Preview Uploaded Schedule (Top 10 records)")
-        st.dataframe(schedule_df.head(10), use_container_width=True)
+        st.markdown("### 📄 Preview Uploaded Schedule")
+        st.dataframe(schedule_df, use_container_width=True)
     except Exception as e:
         st.error(f"❌ Error reading uploaded file: {e}")
         schedule_df = pd.DataFrame()
@@ -90,7 +90,7 @@ if st.button("✅ Run Validation"):
                 def highlight_invalid(row):
                     return ['background-color: #e20016' if 'Invalid' in str(row['Validation Status']) else '' for _ in row]
 
-                st.success("✔ VALIDATION COMPLETE!")
+                st.success(f"✔ VALIDATION COMPLETE!")
                 st.dataframe(
                     validated_df[[
                         'SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
