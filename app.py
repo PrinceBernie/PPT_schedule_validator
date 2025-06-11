@@ -22,6 +22,7 @@ def load_system_dump():
 # --- Load at Startup ---
 dump_df = load_system_dump()
 
+
 # --- App Title & Instructions ---
 st.title("📋 Contribution Schedule Validator")
 st.markdown("""
@@ -72,7 +73,7 @@ if st.button("✅ Run Validation"):
     else:
         try:
             # --- Filter system dump for matching scheme ---
-            scheme_only_dump = dump_df[dump_df['[Scheme name]'] == scheme_type].copy()
+            scheme_only_dump = dump_df.loc[(dump_df['[Scheme name]'] == scheme_type) & (dump_df['Status'] == "Open")]
 
             if scheme_only_dump.empty:
                 st.warning("⚠️ No records found in system data for selected scheme type.")
