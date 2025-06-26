@@ -23,7 +23,7 @@ def normalize_name(name):
 def match_by_contact(system_df, contact, name):
     if pd.isna(contact):
         return None, None
-    contact_match = system_df[system_df['Contact'] == contact]
+    contact_match = system_df.loc[system_df['Contact'] == contact]
     if not contact_match.empty:
         db_row = contact_match.iloc[0]
         score = fuzz.token_sort_ratio(name, db_row['clean_name'])
@@ -35,7 +35,7 @@ def match_by_ghana_card(system_df, gh_card, name):
     if pd.isna(gh_card):
         return None, None
     for col in ['NIA Number', 'SSNIT Number']:
-        match = system_df[system_df[col] == gh_card]
+        match = system_df.loc[system_df[col] == gh_card]
         if not match.empty:
             db_row = match.iloc[0]
             score = fuzz.token_sort_ratio(name, db_row['clean_name'])
@@ -47,7 +47,7 @@ def match_by_ssnit(system_df, ssnit, name):
     if pd.isna(ssnit):
         return None, None
     for col in ['SSNIT Number', 'NIA Number']:
-        match = system_df[system_df[col] == ssnit]
+        match = system_df.loc[system_df[col] == ssnit]
         if not match.empty:
             db_row = match.iloc[0]
             score = fuzz.token_sort_ratio(name, db_row['clean_name'])
