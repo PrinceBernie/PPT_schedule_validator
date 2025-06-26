@@ -28,7 +28,7 @@ def match_by_contact(system_df, contact, name):
         db_row = contact_match.iloc[0]
         score = fuzz.token_sort_ratio(name, db_row['clean_name'])
         if score >= CONFIG['strict_threshold']:
-            return db_row, f"✅ Valid: Match via Contact (score: {score}%)"
+            return db_row, f"✅ Contact Matched. Matched Name: {db_row['clean_name'].title()} ({round(score,2)}%)"
     return None, None
 
 def match_by_ghana_card(system_df, gh_card, name):
@@ -40,7 +40,7 @@ def match_by_ghana_card(system_df, gh_card, name):
             db_row = match.iloc[0]
             score = fuzz.token_sort_ratio(name, db_row['clean_name'])
             if score >= CONFIG['strict_threshold']:
-                return db_row, f"✅ Valid: Ghana Card matched via {col} (score: {score}%)"
+                return db_row, f"✅ Ghana Card Matched. Matched Name: {db_row['clean_name'].title()} ({round(score,2)}%)"
     return None, None
 
 def match_by_ssnit(system_df, ssnit, name):
@@ -52,7 +52,7 @@ def match_by_ssnit(system_df, ssnit, name):
             db_row = match.iloc[0]
             score = fuzz.token_sort_ratio(name, db_row['clean_name'])
             if score >= CONFIG['strict_threshold']:
-                return db_row, f"✅ Valid: SSNIT matched via {col} (score: {score}%)"
+                return db_row, f"✅ SSNIT Number matched. Matched Name: {db_row['clean_name'].title()} ({round(score,2)}%)"
     return None, None
 
 def match_by_fuzzy_name(filtered_df, name):
@@ -60,7 +60,7 @@ def match_by_fuzzy_name(filtered_df, name):
     if match and match[1] >= CONFIG['strict_threshold']:
         matched_name = match[0]
         row = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
-        return row, f"🔎 Fuzzy Name Match: {matched_name} ({round(match[1],2)}%)"
+        return row, f"🔎 Fuzzy Name Match: {matched_name.title()} ({round(match[1],2)}%)"
     return None, "🟡 No fuzzy match found"
 
 # --- Main Validator ---
