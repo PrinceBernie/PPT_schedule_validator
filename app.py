@@ -80,8 +80,8 @@ if st.button("✅ Run Validation"):
     })
             
             # --- Filter system dump ---
-            scheme_only_df = system_df[(system_df['[Scheme name]'] == scheme_type) & (system_df['Status'] == 'Open')]
-            employer_filtered_df = scheme_only_df[scheme_only_df['Group name'] == employer_name]
+            scheme_only_df = system_df.loc[(system_df['[Scheme name]'] == scheme_type) & (system_df['Status'] == 'Open')]
+            employer_filtered_df = scheme_only_df.loc[scheme_only_df['Group name'] == employer_name]
 
             if scheme_only_df.empty:
                 st.warning("⚠️ No records found for selected scheme type.")
