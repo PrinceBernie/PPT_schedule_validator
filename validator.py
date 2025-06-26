@@ -1,7 +1,7 @@
 import pandas as pd
 from rapidfuzz import fuzz, process
 
-# --- Global Settings ---
+# --- Global Settings .i.e. configuable parameters---
 CONFIG = {
     'strict_threshold': 85,
     'loose_threshold': 50,
@@ -13,7 +13,7 @@ CONFIG = {
 # --- Utility Functions ---
 def clean_name(value):
     return (str(value).strip().lower()
-            .replace('.', ' ').replace(',', ' ')
+            .replace('.', ' ').replace(',', ' ').replace("-"," ")
             .replace("  ", " "))
 
 def normalize_name(name):
@@ -75,6 +75,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
     schedule_df['clean_name'] = schedule_df['Member Name'].apply(normalize_name)
     schedule_df['NIA Number'] = schedule_df['NIA Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
     schedule_df['SSNIT Number'] = schedule_df['SSNIT Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    schedule_df['Contact'] = schedule_df['Contact'].astype(str).str.strip()
     schedule_df['Contact'] = pd.to_numeric(schedule_df['Contact'], errors='coerce')
     schedule_df['Salary'] = pd.to_numeric(schedule_df['Salary'], errors='coerce')
     schedule_df['Tier2 Contribution'] = pd.to_numeric(schedule_df['Tier2 Contribution'], errors='coerce')
@@ -83,12 +84,14 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
     scheme_df['clean_name'] = scheme_df[['FirstName', 'MiddleName', 'LastName']].fillna('').agg(' '.join, axis=1).apply(normalize_name)
     scheme_df['NIA Number'] = scheme_df['NIA Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
     scheme_df['SSNIT Number'] = scheme_df['SSNIT Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    scheme_df['Contact'] = scheme_df['Contact'].astype(str).str.strip()
     scheme_df['Contact'] = pd.to_numeric(scheme_df['Contact'], errors='coerce')
 
     filtered_df['clean_name'] = filtered_df[['FirstName', 'MiddleName', 'LastName']].fillna('').agg(' '.join, axis=1).apply(normalize_name)
     filtered_df['NIA Number'] = filtered_df['NIA Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
     filtered_df['SSNIT Number'] = filtered_df['SSNIT Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
     filtered_df['Contact'] = pd.to_numeric(filtered_df['Contact'], errors='coerce')
+    filtered_df['Contact'] = filtered_df['Contact'].astype(str).str.strip()
     
     for i, row in schedule_df.iterrows():
         status = []

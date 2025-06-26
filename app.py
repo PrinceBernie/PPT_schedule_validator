@@ -100,7 +100,7 @@ if st.button("✅ Run Validation"):
                 # --- Download Button ---
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    validated.to_excel(writer, index=True, sheet_name='Validated')
+                    validated.to_excel(writer, index=True, sheet_name='Validated', index_label = "S/N")
                 st.download_button(
                     label="📥 Download Validated Excel",
                     data=output.getvalue(),
