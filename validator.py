@@ -5,7 +5,7 @@ from rapidfuzz import fuzz, process
 CONFIG = {
     'strict_threshold': 70,
     'loose_threshold': 90,
-    'min_salary': 539.8,
+    'min_salary': 539,
     'max_salary': 61000,
     'contribution_tolerance': 0.5
 }
@@ -135,7 +135,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
             # Fuzzy Name Match as last resort (using filtered_df for employer-specific search)
             if not fallback_found:
                 match = process.extractOne(name, filtered_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
-                if match and match[1] >= CONFIG['strict_threshold']:
+                if match and match[1] >= CONFIG['loose_threshold']:
                     matched_name = match[0]
                     row_match = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
                     schedule_df.at[i, 'Scheme Number'] = row_match['Scheme Number']

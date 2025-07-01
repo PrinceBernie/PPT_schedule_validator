@@ -31,34 +31,23 @@ system_df = load_system_dump()
 # --- UI Layout ---
 st.title("📋 Contribution Schedule Validator")
 st.markdown("""
-**Enhanced Validation System** - Upload your contribution schedule and validate member data with improved fallback matching.
-
-### How it works:
-1. **Upload** your contribution schedule (Excel file)
-2. **Select** your employer name and scheme type
-3. **Run validation** to check member registration and contribution accuracy
-4. **Download** validated results with detailed status information
-
----
+* Upload your schedule file, then select the relevant Employer Name and Scheme Type to validate.
 """)
 
 # --- Show System Statistics ---
 if not system_df.empty:
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Members", f"{len(system_df):,}")
     with col2:
         active_members = len(system_df[system_df.get('Status', '') == 'Open']) if 'Status' in system_df.columns else 0
-        st.metric("Active Members", f"{active_members:,}")
+        st.metric("Total Open Accounts", f"{active_members:,}")
     with col3:
-        unique_employers = len(system_df['Group name'].dropna().unique()) if 'Group name' in system_df.columns else 0
-        st.metric("Employers", f"{unique_employers:,}")
-    with col4:
         unique_schemes = len(system_df['[Scheme name]'].dropna().unique()) if '[Scheme name]' in system_df.columns else 0
         st.metric("Scheme Types", f"{unique_schemes:,}")
 
 # --- Selection Interface ---
-st.markdown("### 🎯 Selection Criteria")
+st.markdown("### 🎯 Filter Selection")
 
 employer_name, scheme_type = None, None
 col1, col2 = st.columns(2)
@@ -119,9 +108,9 @@ if schedule_file:
             'Member Name', 'Salary', 'Tier2 Contribution'
         ]
         
-        st.markdown("### 👀 Schedule Preview")
+        st.markdown("### 📄 Schedule Preview")
         st.dataframe(
-            schedule_df.head(10), 
+            schedule_df, 
             use_container_width=True)
         
         # Show basic statistics
@@ -129,8 +118,8 @@ if schedule_file:
         with col1:
             st.metric("Total Records", len(schedule_df))
         with col2:
-            avg_salary = schedule_df['Salary'].mean() if 'Salary' in schedule_df.columns else 0
-            st.metric("Avg Salary", f"GHS {avg_salary:,.2f}" if pd.notna(avg_salary) else "N/A")
+            total_tier2 = schedule_df['Tier2 Contribution'].sum() if 'Salary' in schedule_df.columns else 0
+            st.metric("Total Contribution", f"GHS {total_tier2:,.2f}" if pd.notna(total_tier2) else "N/A")
         with col3:
             empty_schemes = schedule_df['Scheme Number'].isna().sum() if 'Scheme Number' in schedule_df.columns else 0
             st.metric("Empty Scheme Numbers", empty_schemes)
@@ -143,7 +132,7 @@ if schedule_file:
 st.markdown("### ⚡ Run Validation")
 
 # Validation button with enhanced styling
-if st.button("🚀 **Run Enhanced Validation**", type="primary", use_container_width=True):
+if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
     
     # Pre-validation checks
     if schedule_df.empty:
@@ -211,53 +200,33 @@ if st.button("🚀 **Run Enhanced Validation**", type="primary", use_container_w
                 st.markdown("### 📊 Validation Results")
                 
                 # Status summary
-                status_counts = validated['Validation Status'].value_counts()
+                validation_status = validated['Validation Status']
                 
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    valid_count = len([s for s in status_counts.index if '✅' in s])
-                    st.metric("✅ Valid Records", valid_count, delta=f"{valid_count/len(validated)*100:.1f}%")
+                    valid_count = len([s for s in validation_status.values if '✅' in s])
+                    st.metric("✅ Populated Scheme numbers", valid_count, delta=f"{valid_count/len(validated)*100:.1f}%")
                 
                 with col2:
-                    error_count = len([s for s in status_counts.index if '❌' in s])
+                    error_count = len([s for s in validation_status.values if '❌' in s])
                     st.metric("❌ Error Records", error_count, delta=f"{error_count/len(validated)*100:.1f}%")
                 
                 with col3:
-                    warning_count = len([s for s in status_counts.index if '⚠️' in s])
-                    st.metric("⚠️ Warning Records", warning_count, delta=f"{warning_count/len(validated)*100:.1f}%")
-                
-                with col4:
-                    unregistered_count = len([s for s in status_counts.index if '🟡' in s])
-                    st.metric("🟡 Unregistered", unregistered_count, delta=f"{unregistered_count/len(validated)*100:.1f}%")
+                    unregistered_count = len([s for s in validation_status.values if 'Unregistered member' in s])
+                    st.metric("🟡 Suspense", unregistered_count, delta=f"{unregistered_count/len(validated)*100:.1f}%")
 
                 # Detailed results table
-                st.markdown("### 📋 Detailed Results")
+                st.markdown("### 📋 Validated Schedule")
                 
-                # Add filtering options
-                col1, col2 = st.columns(2)
-                with col1:
-                    status_filter = st.selectbox(
-                        "Filter by Status Type",
-                        ["All"] + [s for s in status_counts.index],
-                        help="Filter results by validation status"
-                    )
-                
-                with col2:
-                    show_columns = st.multiselect(
-                        "Select Columns to Display",
-                        ['SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
-                         'Member Name', 'Salary', 'Tier2 Contribution', 'Validation Status'],
-                        default=['Member Name', 'Salary', 'Tier2 Contribution', 'Validation Status'],
-                        help="Choose which columns to display in the results table"
-                    )
+                # Select fixed columns to display
+                columns_to_display = [
+                    'SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
+                    'Member Name', 'Salary', 'Tier2 Contribution', 'Validation Status']
 
-                # Apply filters
+                # Prepare display DataFrame
                 display_df = validated.copy()
-                if status_filter != "All":
-                    display_df = display_df[display_df['Validation Status'] == status_filter]
-                
-                if show_columns:
-                    display_df = display_df[show_columns]
+                display_df = display_df[columns_to_display]
+
                 
                 # Display results
                 st.dataframe(
@@ -309,7 +278,7 @@ if st.button("🚀 **Run Enhanced Validation**", type="primary", use_container_w
                             help="Download only records with validation errors"
                         )
                     else:
-                        st.success("🎉 No errors found! All records are valid.")
+                        st.success("🎉 No suspense found! Please inspect output before uploading.")
 
         except Exception as e:
             progress_bar.progress(0)
@@ -321,7 +290,7 @@ if st.button("🚀 **Run Enhanced Validation**", type="primary", use_container_w
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; font-size: 0.8em;'>
-    <p>Enhanced Contribution Schedule Validator | Powered by Advanced Fuzzy Matching</p>
-    <p>For support or questions, contact your system administrator</p>
+    <p>Peoples Pension Trust Contribution Schedule Validator | Powered by Advanced Fuzzy Matching</p>
+    <p>For support or questions, contact PPT compliance (compliance@peoplespensiontrust.com)</p>
 </div>
 """, unsafe_allow_html=True)
