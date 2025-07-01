@@ -255,25 +255,25 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                         summary_df.to_excel(writer, index=False, sheet_name='Summary')
                     
                     st.download_button(
-                        label="📊 Download Full Results (Excel)",
+                        label="📊 Download Full Validated Results (Excel)",
                         data=output.getvalue(),
-                        file_name=f"validated_schedule_{employer_name}_{scheme_type}.xlsx",
+                        file_name=f"validated_schedule_{employer_name.split()[0]}_{scheme_type}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         help="Download complete validation results with summary"
                     )
                 
                 with col2:
                     # Errors only download
-                    errors_df = validated[validated['Validation Status'].str.contains('❌', na=False)]
+                    errors_df = validated[validated['Validation Status'].str.contains("🟡", na=False)]
                     if not errors_df.empty:
                         errors_output = io.BytesIO()
                         with pd.ExcelWriter(errors_output, engine='xlsxwriter') as writer:
-                            errors_df.to_excel(writer, index=True, sheet_name='Errors_Only', index_label="S/N")
+                            errors_df.to_excel(writer, index=True, sheet_name='Suspense Members', index_label="S/N")
                         
                         st.download_button(
-                            label="⚠️ Download Errors Only (Excel)",
+                            label="⚠️ Download unregistered members schedule ONLY (Excel)",
                             data=errors_output.getvalue(),
-                            file_name=f"errors_only_{employer_name}_{scheme_type}.xlsx",
+                            file_name=f"SUSPENSE_{employer_name.split()[0]}_{scheme_type}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             help="Download only records with validation errors"
                         )
