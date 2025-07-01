@@ -248,9 +248,9 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                         
                         # Add summary sheet
                         summary_df = pd.DataFrame({
-                            'Status': status_counts.index,
-                            'Count': status_counts.values,
-                            'Percentage': (status_counts.values / len(validated) * 100).round(2)
+                            'Status': validated['Validation Status'].value_counts().index,
+                            'Count': validated['Validation Status'].value_counts().values,
+                            'Percentage': (validated['Validation Status'].value_counts().values / len(validated) * 100).round(2)
                         })
                         summary_df.to_excel(writer, index=False, sheet_name='Summary')
                     
