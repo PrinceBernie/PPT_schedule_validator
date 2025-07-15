@@ -60,8 +60,8 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
     scheme_df['Contact'] = pd.to_numeric(scheme_df['Contact'], errors='coerce')
 
     filtered_df['clean_name'] = filtered_df[['FirstName', 'MiddleName', 'LastName']].fillna('').agg(' '.join, axis=1).apply(normalize_name)
-    filtered_df['NIA Number'] = filtered_df['NIA Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    filtered_df['SSNIT Number'] = filtered_df['SSNIT Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    filtered_df['NIA Number'] = filtered_df['NIA Number'].fillna("").astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    filtered_df['SSNIT Number'] = filtered_df['SSNIT Number'].fillna('').astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
     #filtered_df['Contact'] = filtered_df['Contact'].astype(str).str.replace(r"[^\d]", "", regex=True).str.strip()
     filtered_df['Contact'] = pd.to_numeric(filtered_df['Contact'], errors='coerce')
     
