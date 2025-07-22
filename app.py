@@ -199,7 +199,7 @@ if employer_name and scheme_type and not system_df.empty:
 st.markdown("### 📄 Download Blank Schedule Template")
 st.markdown("Generate a pre-filled template with member information for the selected employer and scheme.")
 
-if st.button("📥 **GENERATE BLANK TEMPLATE**", type="primary", use_container_width=False):
+if st.button("📥 **GENERATE SCHEDULE TEMPLATE**", type="primary", use_container_width=False):
     if not employer_name or not scheme_type:
         st.error("⚠️ Please select both Employer Name and Scheme Type first.")
     else:
