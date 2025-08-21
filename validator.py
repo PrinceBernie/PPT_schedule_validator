@@ -80,7 +80,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
             status.append("❌ Missing Salary or 5% Contribution")
         else:
             if not (CONFIG['min_salary'] <= salary <= CONFIG['max_salary']):
-                status.append("❌ Salary not within allowed range")
+                status.append("❌ Salary not within statutory range")
             expected = round(salary * 0.05, 2)
             if abs(round(tier2, 2) - expected) > CONFIG['contribution_tolerance']:
                 status.append(f"❌ Incorrect 5% contribution (Expected: {expected})")
