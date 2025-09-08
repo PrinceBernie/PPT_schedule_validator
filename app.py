@@ -147,6 +147,7 @@ st.markdown("""
 """)
 
 # --- Show System Statistics ---
+""""
 if not system_df.empty:
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -157,6 +158,7 @@ if not system_df.empty:
     with col3:
         unique_schemes = len(system_df['[Scheme name]'].dropna().unique()) if '[Scheme name]' in system_df.columns else 0
         st.metric("Scheme Types", f"{unique_schemes:,}")
+"""
 
 # --- Selection Interface ---
 st.markdown("### 🎯 Filter Selection")
