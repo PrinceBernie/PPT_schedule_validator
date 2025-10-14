@@ -359,7 +359,7 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("### 💡 Help")
-st.markdown("""
+    st.markdown("""
     **How to use:**
     1. Select employer and scheme
     2. Download template (optional)
