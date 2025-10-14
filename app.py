@@ -9,8 +9,211 @@ import xlsxwriter
 st.set_page_config(
     page_title="Contribution Schedule Validator", 
     layout="wide",
-    page_icon="📋"
+    page_icon="📋",
+    initial_sidebar_state="expanded"
 )
+
+# --- Custom CSS for Modern UI ---
+st.markdown("""
+<style>
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global Styles */
+    .main {
+        padding-top: 1rem;
+    }
+    
+    /* Custom Header */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .main-header h1 {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin: 0;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .main-header p {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.1rem;
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    
+    /* Card Components */
+    .metric-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border-left: 4px solid #667eea;
+        margin-bottom: 1rem;
+    }
+    
+    .section-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+        border: 1px solid #e1e5e9;
+    }
+    
+    .section-title {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 1.3rem;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* Metrics Styling */
+    .metric-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-value {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 2rem;
+        color: #2c3e50;
+    }
+    
+    .metric-label {
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+    
+    /* Button Styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .primary-button {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+        box-shadow: 0 2px 10px rgba(231, 76, 60, 0.3) !important;
+    }
+    
+    .primary-button:hover {
+        box-shadow: 0 4px 20px rgba(231, 76, 60, 0.4) !important;
+    }
+    
+    /* File Upload Styling */
+    .uploadedFile {
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    /* Progress Bar Styling */
+    .stProgress > div > div > div > div {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* Status Messages */
+    .success-message {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .warning-message {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .info-message {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    /* Data Table Styling */
+    .dataframe {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    
+    /* Sidebar Styling */
+    .css-1d391kg {
+        background: #f8f9fa;
+    }
+    
+    /* Footer Styling */
+    .footer {
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-top: 3rem;
+        padding: 2rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .main-header h1 {
+            font-size: 2rem;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- Load System Dump ---
 @st.cache_data
@@ -140,28 +343,97 @@ def generate_schedule_template(employer_name, scheme_type, filtered_df):
 # Load system data
 system_df = load_system_dump()
 
-# --- UI Layout ---
-st.title("📋 Contribution Schedule Validator")
-st.markdown("""
-* Upload your schedule file, then select the relevant Employer Name and Scheme Type to validate.
-""")
-
-# --- Show System Statistics ---
-
-if not system_df.empty:
-    col1, col2, col3 = st.columns(3)
-    with col1:
+# --- Sidebar Navigation ---
+with st.sidebar:
+    st.markdown("## 🧭 Navigation")
+    st.markdown("---")
+    
+    # Quick stats in sidebar
+    if not system_df.empty:
+        st.markdown("### 📊 Quick Stats")
         st.metric("Total Members", f"{len(system_df):,}")
-    with col2:
         active_members = len(system_df[system_df.get('Status', '') == 'Open']) if 'Status' in system_df.columns else 0
-        st.metric("Total Open Accounts", f"{active_members:,}")
-    with col3:
+        st.metric("Active Members", f"{active_members:,}")
         unique_schemes = len(system_df['[Scheme name]'].dropna().unique()) if '[Scheme name]' in system_df.columns else 0
         st.metric("Scheme Types", f"{unique_schemes:,}")
+    
+    st.markdown("---")
+    st.markdown("### 💡 Help")
+st.markdown("""
+    **How to use:**
+    1. Select employer and scheme
+    2. Download template (optional)
+    3. Upload your schedule
+    4. Run validation
+    5. Download results
+    """)
+    
+    st.markdown("---")
+    st.markdown("### 📞 Support")
+    st.markdown("**Email:** compliance@peoplespensiontrust.com")
+
+# --- Main Header ---
+st.markdown("""
+<div class="main-header">
+    <h1>📋 Contribution Schedule Validator</h1>
+    <p>Upload your schedule file, then select the relevant Employer Name and Scheme Type to validate.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# --- System Statistics Cards ---
+if not system_df.empty:
+    st.markdown("### 📊 System Overview")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-container">
+                <div>
+                    <div class="metric-label">Total Members</div>
+                    <div class="metric-value">{:,}</div>
+                </div>
+                <div style="font-size: 2rem;">👥</div>
+            </div>
+        </div>
+        """.format(len(system_df)), unsafe_allow_html=True)
+    
+    with col2:
+        active_members = len(system_df[system_df.get('Status', '') == 'Open']) if 'Status' in system_df.columns else 0
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-container">
+                <div>
+                    <div class="metric-label">Active Members</div>
+                    <div class="metric-value">{:,}</div>
+                </div>
+                <div style="font-size: 2rem;">✅</div>
+            </div>
+        </div>
+        """.format(active_members), unsafe_allow_html=True)
+    
+    with col3:
+        unique_schemes = len(system_df['[Scheme name]'].dropna().unique()) if '[Scheme name]' in system_df.columns else 0
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-container">
+                <div>
+                    <div class="metric-label">Scheme Types</div>
+                    <div class="metric-value">{:,}</div>
+                </div>
+                <div style="font-size: 2rem;">📋</div>
+            </div>
+        </div>
+        """.format(unique_schemes), unsafe_allow_html=True)
 
 
-# --- Selection Interface ---
-st.markdown("### 🎯 Filter Selection")
+# --- Filter Selection Card ---
+st.markdown("""
+<div class="section-card">
+    <div class="section-title">
+        🎯 Filter Selection
+    </div>
+""", unsafe_allow_html=True)
 
 employer_name, scheme_type = None, None
 col1, col2 = st.columns(2)
@@ -175,7 +447,7 @@ with col1:
             help="Choose the employer/company for validation"
         )
     else:
-        st.error("❌ Column 'Group name' not found in system dump.")
+        st.markdown('<div class="error-message">❌ Column "Group name" not found in system dump.</div>', unsafe_allow_html=True)
 
 with col2:
     if not system_df.empty and '[Scheme name]' in system_df.columns:
@@ -186,7 +458,7 @@ with col2:
             help="Choose the pension scheme type"
         )
     else:
-        st.error("❌ Column '[Scheme name]' not found in system dump.")
+        st.markdown('<div class="error-message">❌ Column "[Scheme name]" not found in system dump.</div>', unsafe_allow_html=True)
 
 # --- Show filtered statistics ---
 if employer_name and scheme_type and not system_df.empty:
@@ -195,15 +467,26 @@ if employer_name and scheme_type and not system_df.empty:
         (system_df['[Scheme name]'] == scheme_type) &
         (system_df.get('Status', '') == 'Open')
     ])
-    st.info(f"📊 **{filtered_count:,} active members** found for {employer_name} under {scheme_type} scheme")
+    st.markdown(f"""
+    <div class="info-message">
+        📊 <strong>{filtered_count:,} active members</strong> found for {employer_name} under {scheme_type} scheme
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 # --- Template Download Section ---
-st.markdown("### 📄 Download Blank Schedule Template")
-st.markdown("Generate a pre-filled template with member information for the selected employer and scheme.")
+st.markdown("""
+<div class="section-card">
+    <div class="section-title">
+        📄 Download Blank Schedule Template
+    </div>
+    <p style="color: #6c757d; margin-bottom: 1.5rem;">Generate a pre-filled template with member information for the selected employer and scheme.</p>
+""", unsafe_allow_html=True)
 
-if st.button("📥 **GENERATE SCHEDULE TEMPLATE**", type="primary", use_container_width=False):
+if st.button("📥 **GENERATE SCHEDULE TEMPLATE**", type="primary", use_container_width=True):
     if not employer_name or not scheme_type:
-        st.error("⚠️ Please select both Employer Name and Scheme Type first.")
+        st.markdown('<div class="error-message">⚠️ Please select both Employer Name and Scheme Type first.</div>', unsafe_allow_html=True)
     else:
         try:
             # Prepare filtered data for template
@@ -228,7 +511,7 @@ if st.button("📥 **GENERATE SCHEDULE TEMPLATE**", type="primary", use_containe
             ]
             
             if filtered_df.empty:
-                st.error("❌ No active members found for the selected employer and scheme type.")
+                st.markdown('<div class="error-message">❌ No active members found for the selected employer and scheme type.</div>', unsafe_allow_html=True)
             else:
                 # Generate template
                 template_data = generate_schedule_template(employer_name, scheme_type, filtered_df)
@@ -241,13 +524,20 @@ if st.button("📥 **GENERATE SCHEDULE TEMPLATE**", type="primary", use_containe
                     help="Download blank schedule template with pre-filled member information"
                 )
                 
-                st.success(f"✅ Template ready for download! Contains {len(filtered_df)} members.")
+                st.markdown(f'<div class="success-message">✅ Template ready for download! Contains {len(filtered_df)} members.</div>', unsafe_allow_html=True)
                 
         except Exception as e:
-            st.error(f"❌ Error generating template: {e}")
+            st.markdown(f'<div class="error-message">❌ Error generating template: {e}</div>', unsafe_allow_html=True)
 
-# --- File Upload ---
-st.markdown("### 📤 Upload Schedule")
+st.markdown("</div>", unsafe_allow_html=True)
+
+# --- File Upload Section ---
+st.markdown("""
+<div class="section-card">
+    <div class="section-title">
+        📤 Upload Schedule
+    </div>
+""", unsafe_allow_html=True)
 schedule_file = st.file_uploader(
     "Upload Contribution Schedule (.xlsx)", 
     type=["xlsx"],
@@ -288,20 +578,27 @@ if schedule_file:
             st.metric("Empty Scheme Numbers", empty_schemes)
             
     except Exception as e:
-        st.error(f"❌ Error reading schedule file: {e}")
-        st.info("💡 Please ensure your Excel file has the correct format and structure.")
+        st.markdown(f'<div class="error-message">❌ Error reading schedule file: {e}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-message">💡 Please ensure your Excel file has the correct format and structure.</div>', unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 # --- Validation Interface ---
-st.markdown("### ⚡ Run Validation")
+st.markdown("""
+<div class="section-card">
+    <div class="section-title">
+        ⚡ Run Validation
+    </div>
+""", unsafe_allow_html=True)
 
 # Validation button with enhanced styling
 if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
     
     # Pre-validation checks
     if schedule_df.empty:
-        st.error("⚠️ Please upload a valid schedule file.")
+        st.markdown('<div class="error-message">⚠️ Please upload a valid schedule file.</div>', unsafe_allow_html=True)
     elif not employer_name or not scheme_type:
-        st.error("⚠️ Please select both Employer Name and Scheme Type.")
+        st.markdown('<div class="error-message">⚠️ Please select both Employer Name and Scheme Type.</div>', unsafe_allow_html=True)
     else:
         # Show progress
         progress_bar = st.progress(0)
@@ -342,9 +639,9 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
             
             # Validation checks
             if scheme_only_df.empty:
-                st.error("❌ No active records found for selected scheme type.")
+                st.markdown('<div class="error-message">❌ No active records found for selected scheme type.</div>', unsafe_allow_html=True)
             elif employer_filtered_df.empty:
-                st.error("❌ No active records found for selected employer in this scheme.")
+                st.markdown('<div class="error-message">❌ No active records found for selected employer in this scheme.</div>', unsafe_allow_html=True)
             else:
                 status_text.text("🔍 Running enhanced validation...")
                 progress_bar.progress(80)
@@ -441,19 +738,20 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                             help="Download only records with validation errors"
                         )
                     else:
-                        st.success("🎉 No suspense found! Please inspect output before uploading.")
+                        st.markdown('<div class="success-message">🎉 No suspense found! Please inspect output before uploading.</div>', unsafe_allow_html=True)
 
         except Exception as e:
             progress_bar.progress(0)
             status_text.text("")
-            st.error(f"❌ Error during validation: {str(e)}")
-            st.info("💡 Please check your file format and try again. Contact support if the issue persists.")
+            st.markdown(f'<div class="error-message">❌ Error during validation: {str(e)}</div>', unsafe_allow_html=True)
+            st.markdown('<div class="info-message">💡 Please check your file format and try again. Contact support if the issue persists.</div>', unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 # --- Footer ---
-st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #666; font-size: 0.8em;'>
-    <p>Peoples Pension Trust Contribution Schedule Validator | Powered by Advanced Fuzzy Matching</p>
+<div class="footer">
+    <p><strong>Peoples Pension Trust Contribution Schedule Validator</strong> | Powered by Advanced Fuzzy Matching</p>
     <p>For support or questions, contact PPT compliance (compliance@peoplespensiontrust.com)</p>
 </div>
 """, unsafe_allow_html=True)
