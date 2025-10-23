@@ -4,7 +4,7 @@ from rapidfuzz import fuzz, process
 # --- Global Settings .i.e. configurable parameters---
 CONFIG = {
     'strict_threshold': 70,
-    'loose_threshold': 60,
+    'loose_threshold': 90,
     'min_salary': 539,
     'max_salary': 61000,
     'contribution_tolerance': 0.5
