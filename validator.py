@@ -1,7 +1,7 @@
 import pandas as pd
 from rapidfuzz import fuzz, process
 
-# --- Global Settings .i.e. configurable parameters---
+# --- Global Settings ---
 CONFIG = {
     'strict_threshold': 70,
     'loose_threshold': 90,
@@ -12,26 +12,40 @@ CONFIG = {
 
 # --- Utility Functions ---
 def clean_name(value):
-    return (str(value).strip().lower()
-            .replace('.', ' ').replace(',', ' ').replace("-"," ")
-            .replace("  ", " "))
+    return (
+        str(value).strip().lower()
+        .replace('.', ' ')
+        .replace(',', ' ')
+        .replace('-', ' ')
+        .replace("  ", " ")
+    )
 
 def normalize_name(name):
     return " ".join(sorted(clean_name(name).split()))
+
+def clean_id(value):
+    if pd.isna(value):
+        return ""
+    return str(value).strip().replace(".0", "")
+
+def clean_alphanum(value):
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
 
 # --- Improved Fallback Matcher ---
 def find_and_validate_match(df, key_col, key_val, input_name, threshold):
     """Generic function to find and validate matches across different ID types"""
     if pd.isna(key_val) or str(key_val).strip() == '':
         return None, None
-    
-    # Handle both exact matches and potential variations
+
     matches = df[df[key_col] == key_val]
     if not matches.empty:
         db_row = matches.iloc[0]
         score = fuzz.token_sort_ratio(input_name, db_row['clean_name'])
         if score >= threshold:
             return db_row, score
+
     return None, None
 
 # --- Main Validator ---
@@ -40,35 +54,58 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
         'SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
         'Member Name', 'Salary', 'Tier2 Contribution'
     ]
+    schedule_df = schedule_df.copy()
+    filtered_df = filtered_df.copy()
+    scheme_df = scheme_df.copy()
+
     schedule_df.columns = columns
 
+    # Preserve identifier fields as text
+    text_cols_schedule = ['SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number', 'Member Name']
+    for col in text_cols_schedule:
+        schedule_df[col] = schedule_df[col].astype('string')
+
+    text_cols_system = ['SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number']
+    for df in [filtered_df, scheme_df]:
+        for col in text_cols_system:
+            if col in df.columns:
+                df[col] = df[col].astype('string')
+
     # Cleanup schedule data
+    schedule_df['Member Name'] = schedule_df['Member Name'].fillna("").astype(str)
     schedule_df['clean_name'] = schedule_df['Member Name'].apply(normalize_name)
-    schedule_df['NIA Number'] = schedule_df['NIA Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    schedule_df['SSNIT Number'] = schedule_df['SSNIT Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    #schedule_df['Contact'] = schedule_df['Contact'].astype(str).str.replace(r"[^\d]", "", regex=True).str.strip()
-    schedule_df['Contact'] = pd.to_numeric(schedule_df['Contact'], errors='coerce')
+
+    schedule_df['NIA Number'] = schedule_df['NIA Number'].fillna("").astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    schedule_df['SSNIT Number'] = schedule_df['SSNIT Number'].fillna("").astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+
+    # Contact: keep raw text version for assignment safety, numeric version for exact numeric comparison
+    schedule_df['Contact_raw'] = schedule_df['Contact'].fillna("").astype(str).str.strip()
+    schedule_df['Contact'] = pd.to_numeric(schedule_df['Contact_raw'], errors='coerce')
+
     schedule_df['Salary'] = pd.to_numeric(schedule_df['Salary'], errors='coerce')
     schedule_df['Tier2 Contribution'] = pd.to_numeric(schedule_df['Tier2 Contribution'], errors='coerce')
     schedule_df['Validation Status'] = ""
 
-    # Cleanup system data
+    # Cleanup scheme/system data
     scheme_df['clean_name'] = scheme_df[['FirstName', 'MiddleName', 'LastName']].fillna('').agg(' '.join, axis=1).apply(normalize_name)
-    scheme_df['NIA Number'] = scheme_df['NIA Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    scheme_df['SSNIT Number'] = scheme_df['SSNIT Number'].astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    #scheme_df['Contact'] = scheme_df['Contact'].astype(str).str.replace(r"[^\d]", "", regex=True).str.strip()
-    scheme_df['Contact'] = pd.to_numeric(scheme_df['Contact'], errors='coerce')
+    scheme_df['NIA Number'] = scheme_df['NIA Number'].fillna("").astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    scheme_df['SSNIT Number'] = scheme_df['SSNIT Number'].fillna("").astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    scheme_df['Contact_raw'] = scheme_df['Contact'].fillna("").astype(str).str.strip()
+    scheme_df['Contact'] = pd.to_numeric(scheme_df['Contact_raw'], errors='coerce')
+    scheme_df['Scheme Number'] = scheme_df['Scheme Number'].fillna("").astype(str).str.strip()
 
     filtered_df['clean_name'] = filtered_df[['FirstName', 'MiddleName', 'LastName']].fillna('').agg(' '.join, axis=1).apply(normalize_name)
     filtered_df['NIA Number'] = filtered_df['NIA Number'].fillna("").astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    filtered_df['SSNIT Number'] = filtered_df['SSNIT Number'].fillna('').astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-    #filtered_df['Contact'] = filtered_df['Contact'].astype(str).str.replace(r"[^\d]", "", regex=True).str.strip()
-    filtered_df['Contact'] = pd.to_numeric(filtered_df['Contact'], errors='coerce')
-    
+    filtered_df['SSNIT Number'] = filtered_df['SSNIT Number'].fillna("").astype(str).str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+    filtered_df['Contact_raw'] = filtered_df['Contact'].fillna("").astype(str).str.strip()
+    filtered_df['Contact'] = pd.to_numeric(filtered_df['Contact_raw'], errors='coerce')
+    filtered_df['Scheme Number'] = filtered_df['Scheme Number'].fillna("").astype(str).str.strip()
+
     for i, row in schedule_df.iterrows():
         status = []
+
         name = row['clean_name']
-        scheme = str(row['Scheme Number']).strip()
+        scheme = str(row['Scheme Number']).strip() if pd.notna(row['Scheme Number']) else ""
         gh_card = row['NIA Number']
         ssnit = row['SSNIT Number']
         contact = row['Contact']
@@ -81,6 +118,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
         else:
             if not (CONFIG['min_salary'] <= salary <= CONFIG['max_salary']):
                 status.append("❌ Salary not within statutory range")
+
             expected = round(salary * 0.05, 2)
             if abs(round(tier2, 2) - expected) > CONFIG['contribution_tolerance']:
                 status.append(f"❌ Incorrect 5% contribution (Expected: {expected})")
@@ -89,7 +127,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
         matched_row = None
         scheme_match_found = False
 
-        # Direct Scheme Match (if valid scheme number exists)
+        # Direct Scheme Match
         if scheme and scheme.startswith("1010") and len(scheme) == 13:
             match = scheme_df[scheme_df['Scheme Number'] == scheme]
             if not match.empty:
@@ -104,52 +142,81 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
             else:
                 status.append("⚠️ Scheme number not found in system")
 
-        # === Step 3: Fallback Matching (only if no valid scheme match) ===
+        # === Step 3: Fallback Matching ===
         if not scheme_match_found:
             fallback_found = False
-            
-            # Try Contact matching first (using filtered_df for employer-specific search)
+
+            # Use employer-specific search first
+            if not fallback_found:
+                matched_row, score = find_and_validate_match(filtered_df, 'Contact', contact, name, CONFIG['strict_threshold'])
+                if matched_row is not None:
+                    schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
+                    status.append(f"✅ Contact Matched. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
+                    fallback_found = True
+
+            if not fallback_found:
+                matched_row, score = find_and_validate_match(filtered_df, 'NIA Number', gh_card, name, CONFIG['strict_threshold'])
+                if matched_row is not None:
+                    schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
+                    status.append(f"✅ Ghana Card Matched. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
+                    fallback_found = True
+
+            if not fallback_found:
+                matched_row, score = find_and_validate_match(filtered_df, 'SSNIT Number', ssnit, name, CONFIG['strict_threshold'])
+                if matched_row is not None:
+                    schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
+                    status.append(f"✅ SSNIT Number matched. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
+                    fallback_found = True
+
+            # Fallback to full scheme search only if needed
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'Contact', contact, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
-                    schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                    status.append(f"✅ Contact Matched. Matched Name: {matched_row['clean_name'].title()} ({round(score,2)}%)")
+                    schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
+                    status.append(f"✅ Contact matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
                     fallback_found = True
 
-            # Try Ghana Card matching (using filtered_df for employer-specific search)
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'NIA Number', gh_card, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
-                    schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                    status.append(f"✅ Ghana Card Matched. Matched Name: {matched_row['clean_name'].title()} ({round(score,2)}%)")
+                    schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
+                    status.append(f"✅ Ghana Card matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
                     fallback_found = True
 
-            # Try SSNIT Number matching (using filtered_df for employer-specific search)
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'SSNIT Number', ssnit, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
-                    schedule_df.at[i, 'Scheme Number'] = matched_row['Scheme Number']
-                    status.append(f"✅ SSNIT Number matched. Matched Name: {matched_row['clean_name'].title()} ({round(score,2)}%)")
+                    schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
+                    status.append(f"✅ SSNIT Number matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
                     fallback_found = True
 
-            # Fuzzy Name Match as last resort (using filtered_df for employer-specific search)
-            if not fallback_found:
+            # Fuzzy name match within employer first
+            if not fallback_found and not filtered_df.empty:
                 match = process.extractOne(name, filtered_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
                 if match and match[1] >= CONFIG['loose_threshold']:
                     matched_name = match[0]
                     row_match = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
-                    schedule_df.at[i, 'Scheme Number'] = row_match['Scheme Number']
-                    status.append(f"🔎 Fuzzy Name Match: {matched_name.title()} ({round(match[1],2)}%)")
+                    schedule_df.at[i, 'Scheme Number'] = str(row_match['Scheme Number'])
+                    status.append(f"🔎 Fuzzy Name Match: {matched_name.title()} ({round(match[1], 2)}%)")
                     fallback_found = True
 
-            # If no fallback match found
+            # Fuzzy name match within whole scheme as last resort
+            if not fallback_found and not scheme_df.empty:
+                match = process.extractOne(name, scheme_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
+                if match and match[1] >= CONFIG['loose_threshold']:
+                    matched_name = match[0]
+                    row_match = scheme_df[scheme_df['clean_name'] == matched_name].iloc[0]
+                    schedule_df.at[i, 'Scheme Number'] = str(row_match['Scheme Number'])
+                    status.append(f"🔎 Fuzzy Scheme Match: {matched_name.title()} ({round(match[1], 2)}%)")
+                    fallback_found = True
+
             if not fallback_found:
                 status.append("🟡 Unregistered member")
 
         # Finalize status
         if not status:
             status.append("✅ Valid")
-        
+
         schedule_df.at[i, 'Validation Status'] = "; ".join(status)
 
     return schedule_df.sort_values(by=["Validation Status", "Member Name"], ascending=[False, True])
