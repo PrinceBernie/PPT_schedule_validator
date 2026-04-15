@@ -368,7 +368,7 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                     st.warning(
                         f"⚠️ **{fuzzy_count} record(s) were matched using fuzzy name matching only.** "
                         f"These matches carry higher risk of misidentification. "
-                        f"Please manually review all records flagged with **⚠️🔎 FUZZY** before submission."
+                        f"Please manually review all records flagged with **⚠️🔎 FUZZY** before uploading the schedule."
                     )
 
                 st.markdown("### 📋 Validated Schedule")
