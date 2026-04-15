@@ -196,8 +196,13 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
                 if match and match[1] >= CONFIG['loose_threshold']:
                     matched_name = match[0]
                     row_match = filtered_df[filtered_df['clean_name'] == matched_name].iloc[0]
+                    group_name = str(row_match.get('Group name', 'Unknown')).strip() if 'Group name' in row_match.index else 'Unknown'
                     schedule_df.at[i, 'Scheme Number'] = str(row_match['Scheme Number'])
-                    status.append(f"🔎 Fuzzy Name Match: {matched_name.title()} ({round(match[1], 2)}%)")
+                    status.append(
+                        f"⚠️🔎 FUZZY NAME MATCH — MANUAL REVIEW REQUIRED | "
+                        f"Matched: {matched_name.title()} ({round(match[1], 2)}%) | "
+                        f"Group: {group_name}"
+                    )
                     fallback_found = True
 
             # Fuzzy name match within whole scheme as last resort
@@ -206,8 +211,13 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
                 if match and match[1] >= CONFIG['loose_threshold']:
                     matched_name = match[0]
                     row_match = scheme_df[scheme_df['clean_name'] == matched_name].iloc[0]
+                    group_name = str(row_match.get('Group name', 'Unknown')).strip() if 'Group name' in row_match.index else 'Unknown'
                     schedule_df.at[i, 'Scheme Number'] = str(row_match['Scheme Number'])
-                    status.append(f"🔎 Fuzzy Scheme Match: {matched_name.title()} ({round(match[1], 2)}%)")
+                    status.append(
+                        f"⚠️🔎 FUZZY SCHEME MATCH — MANUAL REVIEW REQUIRED | "
+                        f"Matched: {matched_name.title()} ({round(match[1], 2)}%) | "
+                        f"Group: {group_name}"
+                    )
                     fallback_found = True
 
             if not fallback_found:
