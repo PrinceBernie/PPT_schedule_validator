@@ -348,16 +348,28 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
 
                 validation_status = validated['Validation Status']
 
-                col1, col2, col3 = st.columns(3)
+                # --- Summary Metrics (4 columns) ---
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     valid_count = len([s for s in validation_status.values if '✅' in str(s)])
-                    st.metric("✅ Populated Scheme numbers", valid_count, delta=f"{valid_count/len(validated)*100:.1f}%")
+                    st.metric("✅ Populated Scheme Numbers", valid_count, delta=f"{valid_count/len(validated)*100:.1f}%")
                 with col2:
                     error_count = len([s for s in validation_status.values if '❌' in str(s)])
                     st.metric("❌ Error Records", error_count, delta=f"{error_count/len(validated)*100:.1f}%")
                 with col3:
                     unregistered_count = len([s for s in validation_status.values if 'Unregistered member' in str(s)])
                     st.metric("🟡 Suspense", unregistered_count, delta=f"{unregistered_count/len(validated)*100:.1f}%")
+                with col4:
+                    fuzzy_count = len([s for s in validation_status.values if 'FUZZY' in str(s)])
+                    st.metric("⚠️ Fuzzy Matches (Review)", fuzzy_count, delta=f"{fuzzy_count/len(validated)*100:.1f}%")
+
+                # --- Fuzzy Match Warning Banner ---
+                if fuzzy_count > 0:
+                    st.warning(
+                        f"⚠️ **{fuzzy_count} record(s) were matched using fuzzy name matching only.** "
+                        f"These matches carry higher risk of misidentification. "
+                        f"Please manually review all records flagged with **⚠️🔎 FUZZY** before submission."
+                    )
 
                 st.markdown("### 📋 Validated Schedule")
 
@@ -376,7 +388,7 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
 
                 st.markdown("### 📥 Download Results")
 
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
 
                 with col1:
                     output = io.BytesIO()
@@ -406,7 +418,7 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                             errors_df.to_excel(writer, index=True, sheet_name='Suspense Members', index_label="S/N")
 
                         st.download_button(
-                            label="⚠️ Download unregistered members schedule ONLY (Excel)",
+                            label="⚠️ Download Unregistered Members Only (Excel)",
                             data=errors_output.getvalue(),
                             file_name=f"SUSPENSE_{employer_name.split()[0]}_{scheme_type}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -414,6 +426,23 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                         )
                     else:
                         st.success("🎉 No suspense found! Please inspect output before uploading.")
+
+                with col3:
+                    fuzzy_df = validated[validated['Validation Status'].str.contains("FUZZY", na=False)]
+                    if not fuzzy_df.empty:
+                        fuzzy_output = io.BytesIO()
+                        with pd.ExcelWriter(fuzzy_output, engine='xlsxwriter') as writer:
+                            fuzzy_df.to_excel(writer, index=True, sheet_name='Fuzzy Matches', index_label="S/N")
+
+                        st.download_button(
+                            label="⚠️🔎 Download Fuzzy Matches for Review (Excel)",
+                            data=fuzzy_output.getvalue(),
+                            file_name=f"FUZZY_REVIEW_{employer_name.split()[0]}_{scheme_type}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            help="Download records matched by fuzzy name only — manual review required"
+                        )
+                    else:
+                        st.success("✅ No fuzzy-only matches found.")
 
         except Exception as e:
             progress_bar.progress(0)
