@@ -190,7 +190,13 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
                     status.append(f"✅ SSNIT Number matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
                     fallback_found = True
 
-            # Fuzzy name match within employer first
+            # Fuzzy name match within employer only
+            # NOTE: Cross-employer fuzzy matching has been intentionally removed.
+            # Matching names against the full scheme_df risks assigning contributions
+            # to members from different employers with similar names, causing misallocations
+            # that require reversals and damage data integrity.
+            # If no identifier or employer-scoped name match is found, the record is
+            # flagged as Unregistered for manual resolution.
             if not fallback_found and not filtered_df.empty:
                 match = process.extractOne(name, filtered_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
                 if match and match[1] >= CONFIG['loose_threshold']:
@@ -200,21 +206,6 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
                     schedule_df.at[i, 'Scheme Number'] = str(row_match['Scheme Number'])
                     status.append(
                         f"⚠️🔎 FUZZY NAME MATCH — MANUAL REVIEW REQUIRED | "
-                        f"Matched: {matched_name.title()} ({round(match[1], 2)}%) | "
-                        f"Group: {group_name}"
-                    )
-                    fallback_found = True
-
-            # Fuzzy name match within whole scheme as last resort
-            if not fallback_found and not scheme_df.empty:
-                match = process.extractOne(name, scheme_df['clean_name'].tolist(), scorer=fuzz.token_sort_ratio)
-                if match and match[1] >= CONFIG['loose_threshold']:
-                    matched_name = match[0]
-                    row_match = scheme_df[scheme_df['clean_name'] == matched_name].iloc[0]
-                    group_name = str(row_match.get('Group name', 'Unknown')).strip() if 'Group name' in row_match.index else 'Unknown'
-                    schedule_df.at[i, 'Scheme Number'] = str(row_match['Scheme Number'])
-                    status.append(
-                        f"⚠️🔎 FUZZY SCHEME MATCH — MANUAL REVIEW REQUIRED | "
                         f"Matched: {matched_name.title()} ({round(match[1], 2)}%) | "
                         f"Group: {group_name}"
                     )
