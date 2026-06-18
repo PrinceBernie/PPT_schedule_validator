@@ -366,9 +366,10 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                 # --- Fuzzy Match Warning Banner ---
                 if fuzzy_count > 0:
                     st.warning(
-                        f"⚠️ **{fuzzy_count} record(s) were matched using fuzzy name matching only.** "
-                        f"These matches carry higher risk of misidentification. "
-                        f"Please manually review all records flagged with **⚠️🔎 FUZZY** before uploading the schedule."
+                        f"⚠️ **{fuzzy_count} record(s) were matched using fuzzy name matching within the selected employer only.** "
+                        f"No identifier match (Ghana Card, SSNIT, Contact) was found for these records — name similarity was the sole basis. "
+                        f"Please manually verify all records flagged with **⚠️🔎 FUZZY** before uploading the schedule. "
+                        f"Note: cross-employer fuzzy matching has been disabled to prevent misallocation."
                     )
 
                 st.markdown("### 📋 Validated Schedule")
@@ -439,7 +440,7 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                             data=fuzzy_output.getvalue(),
                             file_name=f"FUZZY_REVIEW_{employer_name.split()[0]}_{scheme_type}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            help="Download records matched by fuzzy name only — manual review required"
+                            help="Employer-scoped fuzzy name matches only — no identifier found; manual verification required before upload"
                         )
                     else:
                         st.success("✅ No fuzzy-only matches found.")
@@ -455,7 +456,7 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; font-size: 0.8em;'>
-    <p>Peoples Pension Trust Contribution Schedule Validator | Powered by Advanced Fuzzy Matching</p>
+    <p>Peoples Pension Trust Contribution Schedule Validator | Powered by Multi-Identifier Matching</p>
     <p>For support or questions, contact PPT compliance (compliance@peoplespensiontrust.com)</p>
 </div>
 """, unsafe_allow_html=True)
