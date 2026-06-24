@@ -48,6 +48,16 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
 
     return None, None
 
+# --- Cross-Employer Check Helper ---
+def cross_employer_flag(matched_row, employer_name):
+    """Returns a warning string if the matched member belongs to a different employer, else empty string."""
+    if not employer_name:
+        return ""
+    matched_group = str(matched_row.get('Group name', '')).strip() if 'Group name' in matched_row.index else ''
+    if matched_group and matched_group != employer_name:
+        return f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
+    return ""
+
 # --- Main Validator ---
 def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", debug=False):
     columns = [
@@ -135,7 +145,8 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
                 score = fuzz.token_sort_ratio(name, db_name)
                 if score >= CONFIG['loose_threshold']:
                     matched_row = match.iloc[0]
-                    status.append("✅ Valid: Scheme match with name")
+                    cross_flag = cross_employer_flag(matched_row, employer_name)
+                    status.append(f"✅ Valid: Scheme match with name{cross_flag}")
                     scheme_match_found = True
                 else:
                     status.append(f"⚠️ Scheme mismatch. Assigned to {db_name.title()}")
@@ -169,17 +180,11 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
                     fallback_found = True
 
             # Fallback to full scheme search only if needed
-            # NOTE: Matches here may belong to a different employer within the same scheme.
-            # The scheme number is kept but a cross-employer warning is appended for human review.
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'Contact', contact, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
                     schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
-                    matched_group = str(matched_row.get('Group name', '')).strip()
-                    cross_flag = (
-                        f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
-                        if employer_name and matched_group and matched_group != employer_name else ""
-                    )
+                    cross_flag = cross_employer_flag(matched_row, employer_name)
                     status.append(f"✅ Contact matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%){cross_flag}")
                     fallback_found = True
 
@@ -187,11 +192,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
                 matched_row, score = find_and_validate_match(scheme_df, 'NIA Number', gh_card, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
                     schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
-                    matched_group = str(matched_row.get('Group name', '')).strip()
-                    cross_flag = (
-                        f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
-                        if employer_name and matched_group and matched_group != employer_name else ""
-                    )
+                    cross_flag = cross_employer_flag(matched_row, employer_name)
                     status.append(f"✅ Ghana Card matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%){cross_flag}")
                     fallback_found = True
 
@@ -199,11 +200,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
                 matched_row, score = find_and_validate_match(scheme_df, 'SSNIT Number', ssnit, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
                     schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
-                    matched_group = str(matched_row.get('Group name', '')).strip()
-                    cross_flag = (
-                        f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
-                        if employer_name and matched_group and matched_group != employer_name else ""
-                    )
+                    cross_flag = cross_employer_flag(matched_row, employer_name)
                     status.append(f"✅ SSNIT Number matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%){cross_flag}")
                     fallback_found = True
 
