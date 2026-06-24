@@ -50,12 +50,20 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
 
 # --- Cross-Employer Check Helper ---
 def cross_employer_flag(matched_row, employer_name):
-    """Returns a warning string if the matched member belongs to a different employer, else empty string."""
+    """
+    Compares the matched member's Group name against the selected employer.
+    Returns a warning string if they differ, empty string if they match or employer_name is unknown.
+    Used after every match path — scheme number, identifier, or fallback — to catch cases where
+    a valid scheme number or identifier resolves to a member registered under a different employer.
+    """
     if not employer_name:
         return ""
     matched_group = str(matched_row.get('Group name', '')).strip() if 'Group name' in matched_row.index else ''
     if matched_group and matched_group != employer_name:
-        return f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
+        return (
+            f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', "
+            f"not '{employer_name}'. VERIFY BEFORE UPLOAD."
+        )
     return ""
 
 # --- Main Validator ---
@@ -138,6 +146,9 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
         scheme_match_found = False
 
         # Direct Scheme Match
+        # After confirming the scheme number exists and the name aligns, check whether the matched
+        # member's Group name matches the selected employer. A valid scheme number can still resolve
+        # to a member registered under a different employer group in the same scheme.
         if scheme and scheme.startswith("1010") and len(scheme) == 13:
             match = scheme_df[scheme_df['Scheme Number'] == scheme]
             if not match.empty:
@@ -204,7 +215,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
                     status.append(f"✅ SSNIT Number matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%){cross_flag}")
                     fallback_found = True
 
-            # Fuzzy name match within employer only
+            # Fuzzy name match within employer only.
             # NOTE: Cross-employer fuzzy matching has been intentionally removed.
             # Matching names against the full scheme_df risks assigning contributions
             # to members from different employers with similar names, causing misallocations
@@ -235,7 +246,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
         schedule_df.at[i, 'Validation Status'] = "; ".join(status)
 
     # Sort: issues first, clean records last, alphabetical by name within each group.
-    # Priority: cross-employer warnings > errors > fuzzy matches > suspense/unregistered > scheme mismatches > clean
+    # Priority: cross-employer > errors > fuzzy > unregistered > scheme mismatches > clean
     def sort_priority(status_val):
         s = str(status_val)
         if 'CROSS-EMPLOYER' in s:
