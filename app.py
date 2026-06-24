@@ -338,7 +338,8 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                 validated = validate_schedule(
                     schedule_df.copy(),
                     employer_filtered_df.copy(),
-                    scheme_only_df.copy()
+                    scheme_only_df.copy(),
+                    employer_name=employer_name
                 )
 
                 progress_bar.progress(100)
@@ -348,11 +349,11 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
 
                 validation_status = validated['Validation Status']
 
-                # --- Summary Metrics (4 columns) ---
-                col1, col2, col3, col4 = st.columns(4)
+                # --- Summary Metrics (5 columns) ---
+                col1, col2, col3, col4, col5 = st.columns(5)
                 with col1:
-                    valid_count = len([s for s in validation_status.values if '✅' in str(s)])
-                    st.metric("✅ Populated Scheme Numbers", valid_count, delta=f"{valid_count/len(validated)*100:.1f}%")
+                    valid_count = len([s for s in validation_status.values if '✅' in str(s) and 'CROSS-EMPLOYER' not in str(s)])
+                    st.metric("✅ Clean Matches", valid_count, delta=f"{valid_count/len(validated)*100:.1f}%")
                 with col2:
                     error_count = len([s for s in validation_status.values if '❌' in str(s)])
                     st.metric("❌ Error Records", error_count, delta=f"{error_count/len(validated)*100:.1f}%")
@@ -361,7 +362,10 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                     st.metric("🟡 Suspense", unregistered_count, delta=f"{unregistered_count/len(validated)*100:.1f}%")
                 with col4:
                     fuzzy_count = len([s for s in validation_status.values if 'FUZZY' in str(s)])
-                    st.metric("⚠️ Fuzzy Matches (Review)", fuzzy_count, delta=f"{fuzzy_count/len(validated)*100:.1f}%")
+                    st.metric("⚠️ Fuzzy Matches", fuzzy_count, delta=f"{fuzzy_count/len(validated)*100:.1f}%")
+                with col5:
+                    cross_employer_count = len([s for s in validation_status.values if 'CROSS-EMPLOYER' in str(s)])
+                    st.metric("🚨 Cross-Employer Flags", cross_employer_count, delta=f"{cross_employer_count/len(validated)*100:.1f}%")
 
                 # --- Fuzzy Match Warning Banner ---
                 if fuzzy_count > 0:
@@ -370,6 +374,15 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                         f"No identifier match (Ghana Card, SSNIT, Contact) was found for these records — name similarity was the sole basis. "
                         f"Please manually verify all records flagged with **⚠️🔎 FUZZY** before uploading the schedule. "
                         f"Note: cross-employer fuzzy matching has been disabled to prevent misallocation."
+                    )
+
+                # --- Cross-Employer Warning Banner ---
+                if cross_employer_count > 0:
+                    st.error(
+                        f"🚨 **{cross_employer_count} record(s) matched a valid scheme number or identifier, but the matched member "
+                        f"belongs to a DIFFERENT employer group.** These records have been assigned scheme numbers based on the match, "
+                        f"but MUST be verified before upload — processing them as-is will allocate contributions to the wrong employer. "
+                        f"Look for records flagged **CROSS-EMPLOYER** in the results below."
                     )
 
                 st.markdown("### 📋 Validated Schedule")
@@ -389,7 +402,7 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
 
                 st.markdown("### 📥 Download Results")
 
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
 
                 with col1:
                     output = io.BytesIO()
@@ -476,6 +489,23 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                         )
                     else:
                         st.success("✅ No fuzzy-only matches found.")
+
+                with col4:
+                    cross_df = validated[validated['Validation Status'].str.contains("CROSS-EMPLOYER", na=False)]
+                    if not cross_df.empty:
+                        cross_output = io.BytesIO()
+                        with pd.ExcelWriter(cross_output, engine='xlsxwriter') as writer:
+                            cross_df.to_excel(writer, index=True, sheet_name='Cross-Employer Flags', index_label="S/N")
+
+                        st.download_button(
+                            label="🚨 Download Cross-Employer Flags (Excel)",
+                            data=cross_output.getvalue(),
+                            file_name=f"CROSS_EMPLOYER_{employer_name.split()[0]}_{scheme_type}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            help="Members whose identifier matched a record registered under a different employer — verify before upload"
+                        )
+                    else:
+                        st.success("✅ No cross-employer matches detected.")
 
         except Exception as e:
             progress_bar.progress(0)
