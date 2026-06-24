@@ -396,6 +396,38 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                         validated.to_excel(writer, index=True, sheet_name='Validated_Results', index_label="S/N")
 
+                        workbook  = writer.book
+                        worksheet = writer.sheets['Validated_Results']
+
+                        # --- Colour formats for Validation Status column ---
+                        fmt_cross    = workbook.add_format({'bg_color': '#FF4C4C', 'font_color': '#FFFFFF', 'bold': True})   # Red       — cross-employer
+                        fmt_error    = workbook.add_format({'bg_color': '#FF9900', 'font_color': '#FFFFFF', 'bold': True})   # Orange    — errors
+                        fmt_fuzzy    = workbook.add_format({'bg_color': '#FFD966', 'font_color': '#000000'})                 # Yellow    — fuzzy matches
+                        fmt_suspense = workbook.add_format({'bg_color': '#FFF2CC', 'font_color': '#000000'})                 # Pale yell — unregistered
+                        fmt_mismatch = workbook.add_format({'bg_color': '#D9B3FF', 'font_color': '#000000'})                 # Lavender  — scheme mismatch
+                        fmt_clean    = workbook.add_format({'bg_color': '#C6EFCE', 'font_color': '#276221'})                 # Green     — clean
+
+                        # Validation Status is the last column; find its 0-based index
+                        # validated has an index column written first, so data cols start at offset 1
+                        status_col_idx = len(validated.columns)  # 0-based: index col + all data cols before status
+
+                        for row_idx, status_val in enumerate(validated['Validation Status'], start=1):
+                            s = str(status_val)
+                            if 'CROSS-EMPLOYER' in s:
+                                fmt = fmt_cross
+                            elif '❌' in s:
+                                fmt = fmt_error
+                            elif 'FUZZY' in s:
+                                fmt = fmt_fuzzy
+                            elif 'Unregistered member' in s:
+                                fmt = fmt_suspense
+                            elif 'Scheme mismatch' in s or 'not found in system' in s:
+                                fmt = fmt_mismatch
+                            else:
+                                fmt = fmt_clean
+
+                            worksheet.write(row_idx, status_col_idx, s, fmt)
+
                         summary_df = pd.DataFrame({
                             'Status': validated['Validation Status'].value_counts().index,
                             'Count': validated['Validation Status'].value_counts().values,
@@ -408,7 +440,7 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                         data=output.getvalue(),
                         file_name=f"validated_schedule_{employer_name.split()[0]}_{scheme_type}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        help="Download complete validation results with summary"
+                        help="Download complete validation results with colour-coded Validation Status column"
                     )
 
                 with col2:
