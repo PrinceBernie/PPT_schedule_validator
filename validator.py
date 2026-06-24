@@ -49,7 +49,7 @@ def find_and_validate_match(df, key_col, key_val, input_name, threshold):
     return None, None
 
 # --- Main Validator ---
-def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
+def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", debug=False):
     columns = [
         'SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
         'Member Name', 'Salary', 'Tier2 Contribution'
@@ -169,25 +169,42 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
                     fallback_found = True
 
             # Fallback to full scheme search only if needed
+            # NOTE: Matches here may belong to a different employer within the same scheme.
+            # The scheme number is kept but a cross-employer warning is appended for human review.
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'Contact', contact, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
                     schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
-                    status.append(f"✅ Contact matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
+                    matched_group = str(matched_row.get('Group name', '')).strip()
+                    cross_flag = (
+                        f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
+                        if employer_name and matched_group and matched_group != employer_name else ""
+                    )
+                    status.append(f"✅ Contact matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%){cross_flag}")
                     fallback_found = True
 
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'NIA Number', gh_card, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
                     schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
-                    status.append(f"✅ Ghana Card matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
+                    matched_group = str(matched_row.get('Group name', '')).strip()
+                    cross_flag = (
+                        f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
+                        if employer_name and matched_group and matched_group != employer_name else ""
+                    )
+                    status.append(f"✅ Ghana Card matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%){cross_flag}")
                     fallback_found = True
 
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'SSNIT Number', ssnit, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
                     schedule_df.at[i, 'Scheme Number'] = str(matched_row['Scheme Number'])
-                    status.append(f"✅ SSNIT Number matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
+                    matched_group = str(matched_row.get('Group name', '')).strip()
+                    cross_flag = (
+                        f" | ⚠️ CROSS-EMPLOYER — matched member belongs to '{matched_group}', not '{employer_name}'. VERIFY BEFORE UPLOAD."
+                        if employer_name and matched_group and matched_group != employer_name else ""
+                    )
+                    status.append(f"✅ SSNIT Number matched in scheme. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%){cross_flag}")
                     fallback_found = True
 
             # Fuzzy name match within employer only
@@ -220,4 +237,25 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, debug=False):
 
         schedule_df.at[i, 'Validation Status'] = "; ".join(status)
 
-    return schedule_df.sort_values(by=["Validation Status", "Member Name"], ascending=[False, True])
+    # Sort: issues first, clean records last, alphabetical by name within each group.
+    # Priority: cross-employer warnings > errors > fuzzy matches > suspense/unregistered > scheme mismatches > clean
+    def sort_priority(status_val):
+        s = str(status_val)
+        if 'CROSS-EMPLOYER' in s:
+            return 0
+        if '❌' in s:
+            return 1
+        if 'FUZZY' in s:
+            return 2
+        if 'Unregistered member' in s:
+            return 3
+        if 'Scheme mismatch' in s or 'not found in system' in s:
+            return 4
+        return 5  # clean ✅ records
+
+    schedule_df['_sort_priority'] = schedule_df['Validation Status'].apply(sort_priority)
+    return (
+        schedule_df
+        .sort_values(by=['_sort_priority', 'Member Name'], ascending=[True, True])
+        .drop(columns=['_sort_priority'])
+    )
