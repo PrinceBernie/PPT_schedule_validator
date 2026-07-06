@@ -339,7 +339,8 @@ if st.button("**VALIDATE SCHEDULE**", type="primary", use_container_width=True):
                     schedule_df.copy(),
                     employer_filtered_df.copy(),
                     scheme_only_df.copy(),
-                    employer_name=employer_name
+                    employer_name=employer_name,
+                    scheme_type=scheme_type
                 )
 
                 progress_bar.progress(100)
