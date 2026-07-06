@@ -5,7 +5,7 @@ from rapidfuzz import fuzz, process
 CONFIG = {
     'strict_threshold': 70,
     'loose_threshold': 90,
-    'min_salary': 587.80,
+    'min_salary': 587.79,
     'max_salary': 69000,
     'contribution_tolerance': 0.5,
     'ops_rates': [0.05, 0.185]   # Valid contribution rates for OPS: 5% or 18.5%
