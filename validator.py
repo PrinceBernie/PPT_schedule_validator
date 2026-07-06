@@ -5,10 +5,13 @@ from rapidfuzz import fuzz, process
 CONFIG = {
     'strict_threshold': 70,
     'loose_threshold': 90,
-    'min_salary': 539,
-    'max_salary': 61000,
-    'contribution_tolerance': 0.5
+    'min_salary': 587.80,
+    'max_salary': 69000,
+    'contribution_tolerance': 0.5,
+    'ops_rates': [0.05, 0.185]   # Valid contribution rates for OPS: 5% or 18.5%
 }
+
+OPS_SCHEME_KEYWORD = "Occupational"   # Matched against scheme_type to identify OPS
 
 # --- Utility Functions ---
 def clean_name(value):
@@ -67,7 +70,7 @@ def cross_employer_flag(matched_row, employer_name):
     return ""
 
 # --- Main Validator ---
-def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", debug=False):
+def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", scheme_type="", debug=False):
     columns = [
         'SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number',
         'Member Name', 'Salary', 'Tier2 Contribution'
@@ -77,6 +80,11 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
     scheme_df = scheme_df.copy()
 
     schedule_df.columns = columns
+
+    # Determine whether contribution rate validation applies.
+    # Only PPT Occupational Pension Scheme enforces fixed rates (5% or 18.5%).
+    # All other schemes have flexible contribution rates — no rate or amount validation applied.
+    is_ops = OPS_SCHEME_KEYWORD.lower() in str(scheme_type).lower()
 
     # Preserve identifier fields as text
     text_cols_schedule = ['SSNIT Number', 'NIA Number', 'Contact', 'Scheme Number', 'Member Name']
@@ -130,22 +138,31 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
         salary = row['Salary']
         tier2 = row['Tier2 Contribution']
 
-        # === Step 1: Salary and 5% Contribution Validation ===
-        if pd.isna(salary) or pd.isna(tier2):
-            status.append("❌ Missing Salary or 5% Contribution")
-        else:
-            if not (CONFIG['min_salary'] <= salary <= CONFIG['max_salary']):
-                status.append("❌ Salary not within statutory range")
+        # === Step 1: Contribution Validation (OPS only) ===
+        # For PPT Occupational Pension Scheme, the Tier 2 contribution must equal
+        # exactly 5% or 18.5% of the member's salary (within the rounding tolerance).
+        # For all other schemes, contribution rates are flexible — no validation applied.
+        if is_ops:
+            if pd.isna(salary) or pd.isna(tier2):
+                status.append("❌ Missing Salary or Contribution")
+            else:
+                if not (CONFIG['min_salary'] <= salary <= CONFIG['max_salary']):
+                    status.append("❌ Salary not within statutory range")
 
-            expected = round(salary * 0.05, 2)
-            if abs(round(tier2, 2) - expected) > CONFIG['contribution_tolerance']:
-                status.append(f"❌ Incorrect 5% contribution (Expected: {expected})")
+                valid_contributions = [
+                    round(salary * rate, 2) for rate in CONFIG['ops_rates']
+                ]
+                if not any(abs(round(tier2, 2) - expected) <= CONFIG['contribution_tolerance'] for expected in valid_contributions):
+                    status.append(
+                        f"❌ Incorrect contribution — expected 5% (GHS {valid_contributions[0]:,.2f}) "
+                        f"or 18.5% (GHS {valid_contributions[1]:,.2f}), got GHS {round(tier2, 2):,.2f}"
+                    )
 
         # === Step 2: Member Identification ===
         matched_row = None
         scheme_match_found = False
 
-        # Direct Scheme Match
+        # Direct Scheme Number Match
         # After confirming the scheme number exists and the name aligns, check whether the matched
         # member's Group name matches the selected employer. A valid scheme number can still resolve
         # to a member registered under a different employer group in the same scheme.
@@ -168,7 +185,7 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
         if not scheme_match_found:
             fallback_found = False
 
-            # Use employer-specific search first
+            # Employer-specific identifier search (filtered_df = selected employer's members only)
             if not fallback_found:
                 matched_row, score = find_and_validate_match(filtered_df, 'Contact', contact, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
@@ -190,7 +207,8 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
                     status.append(f"✅ SSNIT Number matched. Matched Name: {matched_row['clean_name'].title()} ({round(score, 2)}%)")
                     fallback_found = True
 
-            # Fallback to full scheme search only if needed
+            # Scheme-wide identifier fallback (scheme_df = all employers in the scheme)
+            # A match here may belong to a different employer group — flag if so.
             if not fallback_found:
                 matched_row, score = find_and_validate_match(scheme_df, 'Contact', contact, name, CONFIG['strict_threshold'])
                 if matched_row is not None:
@@ -244,6 +262,11 @@ def validate_schedule(schedule_df, filtered_df, scheme_df, employer_name="", deb
             status.append("✅ Valid")
 
         schedule_df.at[i, 'Validation Status'] = "; ".join(status)
+
+    # Drop internal working columns before returning — not needed in output
+    cols_to_drop = [c for c in ['clean_name', 'Contact_raw'] if c in schedule_df.columns]
+    if cols_to_drop:
+        schedule_df = schedule_df.drop(columns=cols_to_drop)
 
     # Sort: issues first, clean records last, alphabetical by name within each group.
     # Priority: cross-employer > errors > fuzzy > unregistered > scheme mismatches > clean
